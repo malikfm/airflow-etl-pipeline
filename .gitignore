@@ -169,3 +169,41 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Project-specific
+# Airflow
+logs/
+airflow.db
+airflow.cfg
+webserver_config.py
+standalone_admin_password.txt
+
+# Data Lake
+data/raw/
+data/processed/
+data/staging/
+*.parquet
+
+# Docker
+.dockerignore
+
+# Great Expectations
+include/uncommitted/
+include/validations/
+include/.ge_store_backend_id
+
+# dbt
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
