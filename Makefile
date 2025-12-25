@@ -65,6 +65,18 @@ seed-docker:
 
 seed: seed-docker
 
+# Data Extraction
+
+extract-local:
+	@echo "Running extraction locally for date: $(DATE)"
+	@uv run python scripts/extract.py $(DATE)
+
+extract-docker:
+	@echo "Running extraction in Docker for date: $(DATE)"
+	@docker-compose exec airflow-api-server python /opt/airflow/scripts/extract.py $(DATE)
+
+extract: extract-docker
+
 # Development
 
 install:

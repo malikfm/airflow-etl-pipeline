@@ -1,0 +1,107 @@
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from scripts.extractors.api_extractor import extract_marketing_data
+from scripts.extractors.db_extractor import (
+    extract_full_table,
+    extract_order_items_by_orders,
+    extract_orders,
+)
+
+default_args = {
+    "owner": "airflow",
+    "depends_on_past": False,
+    "email_on_failure": False,
+    "email_on_retry": False,
+    "retries": 1,
+    "retry_delay": timedelta(minutes=5),
+}
+
+dag = DAG(
+    "ingest_ecommerce_data",
+    default_args=default_args,
+    description="Extract e-commerce data from source DB and API to data lake",
+    schedule="@daily",
+    start_date=datetime(2025, 9, 25),
+    catchup=True,
+    max_active_runs=1,
+    tags=["ingestion", "extract", "data-lake"],
+)
+
+
+def extract_orders_task(**context):
+    """Extract orders for execution date."""
+    execution_date = context["ds"]
+    extract_orders(execution_date)
+
+
+def extract_order_items_task(**context):
+    """Extract order items for execution date."""
+    execution_date = context["ds"]
+    extract_order_items_by_orders(execution_date)
+
+
+def extract_users_task(**context):
+    """Extract full users snapshot."""
+    execution_date = context["ds"]
+    extract_full_table("users", execution_date)
+
+
+def extract_products_task(**context):
+    """Extract full products snapshot."""
+    execution_date = context["ds"]
+    extract_full_table("products", execution_date)
+
+
+def extract_marketing_task(**context):
+    """Extract marketing data from API."""
+    execution_date = context["ds"]
+    extract_marketing_data(execution_date)
+
+
+# Define tasks
+task_extract_orders = PythonOperator(
+    task_id="extract_orders",
+    python_callable=extract_orders_task,
+    dag=dag,
+)
+
+task_extract_order_items = PythonOperator(
+    task_id="extract_order_items",
+    python_callable=extract_order_items_task,
+    dag=dag,
+)
+
+task_extract_users = PythonOperator(
+    task_id="extract_users",
+    python_callable=extract_users_task,
+    dag=dag,
+)
+
+task_extract_products = PythonOperator(
+    task_id="extract_products",
+    python_callable=extract_products_task,
+    dag=dag,
+)
+
+task_extract_marketing = PythonOperator(
+    task_id="extract_marketing",
+    python_callable=extract_marketing_task,
+    dag=dag,
+)
+
+# Set dependencies - all tasks can run in parallel
+[
+    task_extract_orders,
+    task_extract_order_items,
+    task_extract_users,
+    task_extract_products,
+    task_extract_marketing,
+]

@@ -11,7 +11,7 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- pandas pyarrow psycopg2-binary sqlalchemy great-expectations dbt-postgres faker}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- dbt-postgres faker great-expectations pandas psycopg2-binary pyarrow pytest sqlalchemy}
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     # Source Database Connection
     SOURCE_DB_HOST: postgres-source
@@ -33,6 +33,7 @@ x-airflow-common:
     - ./include:/opt/airflow/include
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
+    - ./tests:/opt/airflow/tests
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
