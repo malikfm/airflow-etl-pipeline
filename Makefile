@@ -98,11 +98,11 @@ install:
 
 test:
 	@echo "Running tests..."
-	@uv run pytest -v
+	@uv run python -m pytest -v
 
 test-cov:
 	@echo "Running tests with coverage..."
-	@uv run pytest --cov=scripts --cov-report=html --cov-report=term
+	@uv run python -m pytest --cov=scripts --cov-report=html --cov-report=term
 
 lint:
 	@echo "Running linter..."

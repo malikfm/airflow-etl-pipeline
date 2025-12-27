@@ -36,7 +36,7 @@ def test_validate_orders_success(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_orders(file_path)
+    result = validator.validate_orders("test_orders", file_path)
 
     assert result["success"] is True
     assert result["file_path"] == str(file_path)
@@ -53,7 +53,7 @@ def test_validate_orders_null_user_id(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_orders(file_path)
+    result = validator.validate_orders("test_orders_null", file_path)
 
     assert result["success"] is False
 
@@ -64,7 +64,23 @@ def test_validate_orders_empty_file(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_orders(file_path)
+    result = validator.validate_orders("test_orders_empty", file_path)
+
+    assert result["success"] is False
+
+
+def test_validate_orders_duplicate_id(temp_parquet_file):
+    """Test orders validation fails with duplicate id."""
+    data = {
+        "id": [1, 1, 3],  # Duplicate id
+        "user_id": [10, 20, 30],
+        "status": ["completed", "pending", "shipped"],
+        "created_at": pd.date_range("2024-01-01", periods=3),
+    }
+    file_path = temp_parquet_file(data)
+
+    validator = DataQualityValidator()
+    result = validator.validate_orders("test_orders_dup", file_path)
 
     assert result["success"] is False
 
@@ -81,7 +97,7 @@ def test_validate_marketing_success(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_marketing(file_path)
+    result = validator.validate_marketing("test_marketing", file_path)
 
     assert result["success"] is True
 
@@ -98,7 +114,7 @@ def test_validate_marketing_negative_spend(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_marketing(file_path)
+    result = validator.validate_marketing("test_marketing_neg", file_path)
 
     assert result["success"] is False
 
@@ -115,7 +131,7 @@ def test_validate_marketing_zero_spend(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_marketing(file_path)
+    result = validator.validate_marketing("test_marketing_zero", file_path)
 
     assert result["success"] is False
 
@@ -132,7 +148,7 @@ def test_validate_marketing_invalid_platform(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_marketing(file_path)
+    result = validator.validate_marketing("test_marketing_platform", file_path)
 
     assert result["success"] is False
 
@@ -148,7 +164,7 @@ def test_validate_order_items_success(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_order_items(file_path)
+    result = validator.validate_order_items("test_order_items", file_path)
 
     assert result["success"] is True
 
@@ -164,7 +180,23 @@ def test_validate_order_items_zero_quantity(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_order_items(file_path)
+    result = validator.validate_order_items("test_order_items_zero", file_path)
+
+    assert result["success"] is False
+
+
+def test_validate_order_items_null_order_id(temp_parquet_file):
+    """Test order items validation fails with null order_id."""
+    data = {
+        "id": [1, 2],
+        "order_id": [100, None],  # Null order_id
+        "product_id": [50, 51],
+        "quantity": [2, 1],
+    }
+    file_path = temp_parquet_file(data)
+
+    validator = DataQualityValidator()
+    result = validator.validate_order_items("test_order_items_null", file_path)
 
     assert result["success"] is False
 
@@ -180,7 +212,7 @@ def test_validate_users_success(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_users(file_path)
+    result = validator.validate_users("test_users", file_path)
 
     assert result["success"] is True
 
@@ -200,7 +232,23 @@ def test_validate_users_duplicate_email(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_users(file_path)
+    result = validator.validate_users("test_users_dup_email", file_path)
+
+    assert result["success"] is False
+
+
+def test_validate_users_null_email(temp_parquet_file):
+    """Test users validation fails with null email."""
+    data = {
+        "id": [1, 2, 3],
+        "name": ["Alice", "Bob", "Charlie"],
+        "email": ["alice@example.com", None, "charlie@example.com"],  # Null email
+        "address": ["123 Main St", "456 Oak Ave", "789 Pine Rd"],
+    }
+    file_path = temp_parquet_file(data)
+
+    validator = DataQualityValidator()
+    result = validator.validate_users("test_users_null_email", file_path)
 
     assert result["success"] is False
 
@@ -216,7 +264,7 @@ def test_validate_products_success(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_products(file_path)
+    result = validator.validate_products("test_products", file_path)
 
     assert result["success"] is True
 
@@ -232,7 +280,23 @@ def test_validate_products_zero_price(temp_parquet_file):
     file_path = temp_parquet_file(data)
 
     validator = DataQualityValidator()
-    result = validator.validate_products(file_path)
+    result = validator.validate_products("test_products_zero", file_path)
+
+    assert result["success"] is False
+
+
+def test_validate_products_duplicate_id(temp_parquet_file):
+    """Test products validation fails with duplicate id."""
+    data = {
+        "id": [1, 1, 3],  # Duplicate id
+        "name": ["Product A", "Product B", "Product C"],
+        "category": ["Electronics", "Clothing", "Books"],
+        "price": [99.99, 49.99, 19.99],
+    }
+    file_path = temp_parquet_file(data)
+
+    validator = DataQualityValidator()
+    result = validator.validate_products("test_products_dup", file_path)
 
     assert result["success"] is False
 
@@ -242,4 +306,4 @@ def test_validate_file_not_found():
     validator = DataQualityValidator()
 
     with pytest.raises(FileNotFoundError):
-        validator.validate_orders(Path("/nonexistent/file.parquet"))
+        validator.validate_orders("test_not_found", Path("/nonexistent/file.parquet"))
