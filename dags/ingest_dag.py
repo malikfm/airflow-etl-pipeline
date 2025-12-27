@@ -99,7 +99,7 @@ def validate_data_quality_task(**context):
     for table_name, validate_func in validations.items():
         try:
             file_path = get_data_lake_path(table_name, execution_date)
-            result = validate_func(file_path)
+            result = validate_func(table_name, file_path)
 
             if result["success"]:
                 print(f"✓ {table_name} validation passed")
@@ -112,6 +112,49 @@ def validate_data_quality_task(**context):
 
     if not all_passed:
         raise ValueError("Data quality validation failed - circuit breaker activated")
+
+
+def load_to_staging_task(**context):
+    """Load validated data from data lake to staging tables."""
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+
+    from scripts.common.file_utils import get_data_lake_path
+    from scripts.loaders.staging_loader import (
+        create_staging_schema,
+        load_marketing,
+        load_order_items,
+        load_orders,
+        load_products,
+        load_users,
+    )
+
+    execution_date = context["ds"]
+    
+    print(f"Loading data to staging for {execution_date}")
+    
+    # Create staging schema
+    create_staging_schema()
+    
+    # Load all tables
+    tables = {
+        "orders": load_orders,
+        "order_items": load_order_items,
+        "users": load_users,
+        "products": load_products,
+        "marketing": load_marketing,
+    }
+    
+    total_rows = 0
+    for table_name, load_func in tables.items():
+        file_path = get_data_lake_path(table_name, execution_date)
+        row_count = load_func(file_path, execution_date)
+        print(f"Loaded {row_count} rows to staging.stg_{table_name}")
+        total_rows += row_count
+    
+    print(f"Total rows loaded to staging: {total_rows}")
 
 
 # Define tasks
@@ -151,6 +194,12 @@ task_validate_quality = PythonOperator(
     dag=dag,
 )
 
+task_load_to_staging = PythonOperator(
+    task_id="load_to_staging",
+    python_callable=load_to_staging_task,
+    dag=dag,
+)
+
 # Set dependencies
 # All extraction tasks run in parallel
 extraction_tasks = [
@@ -162,5 +211,5 @@ extraction_tasks = [
 ]
 
 # Validation runs after all extractions complete
-extraction_tasks >> task_validate_quality
-
+# Loading runs after validation passes
+extraction_tasks >> task_validate_quality >> task_load_to_staging
