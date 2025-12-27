@@ -66,6 +66,54 @@ def extract_marketing_task(**context):
     extract_marketing_data(execution_date)
 
 
+def validate_data_quality_task(**context):
+    """
+    Validate extracted data quality.
+    
+    This implements the circuit breaker pattern - if validation fails,
+    the task will fail and stop the pipeline.
+    """
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+
+    from scripts.common.data_quality import DataQualityValidator
+    from scripts.common.file_utils import get_data_lake_path
+
+    execution_date = context["ds"]
+    validator = DataQualityValidator()
+
+    print(f"Validating data for {execution_date}")
+
+    # Validate all extracted files
+    validations = {
+        "orders": validator.validate_orders,
+        "order_items": validator.validate_order_items,
+        "users": validator.validate_users,
+        "products": validator.validate_products,
+        "marketing": validator.validate_marketing,
+    }
+
+    all_passed = True
+    for table_name, validate_func in validations.items():
+        try:
+            file_path = get_data_lake_path(table_name, execution_date)
+            result = validate_func(file_path)
+
+            if result["success"]:
+                print(f"✓ {table_name} validation passed")
+            else:
+                print(f"✗ {table_name} validation failed")
+                all_passed = False
+        except Exception as e:
+            print(f"✗ {table_name} validation error: {e}")
+            all_passed = False
+
+    if not all_passed:
+        raise ValueError("Data quality validation failed - circuit breaker activated")
+
+
 # Define tasks
 task_extract_orders = PythonOperator(
     task_id="extract_orders",
@@ -97,11 +145,22 @@ task_extract_marketing = PythonOperator(
     dag=dag,
 )
 
-# Set dependencies - all tasks can run in parallel
-[
+task_validate_quality = PythonOperator(
+    task_id="validate_data_quality",
+    python_callable=validate_data_quality_task,
+    dag=dag,
+)
+
+# Set dependencies
+# All extraction tasks run in parallel
+extraction_tasks = [
     task_extract_orders,
     task_extract_order_items,
     task_extract_users,
     task_extract_products,
     task_extract_marketing,
 ]
+
+# Validation runs after all extractions complete
+extraction_tasks >> task_validate_quality
+

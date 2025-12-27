@@ -77,6 +77,18 @@ extract-docker:
 
 extract: extract-docker
 
+# Data Quality Validation
+
+validate-local:
+	@echo "Running data quality validation locally for date: $(DATE)"
+	@uv run python scripts/validate.py $(DATE)
+
+validate-docker:
+	@echo "Running data quality validation in Docker for date: $(DATE)"
+	@docker-compose exec airflow-api-server python /opt/airflow/scripts/validate.py $(DATE)
+
+validate: validate-docker
+
 # Development
 
 install:
