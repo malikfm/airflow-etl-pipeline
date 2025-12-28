@@ -1,0 +1,12 @@
+ecommerce_dw:
+  target: prod
+  outputs:
+    prod:
+      type: postgres
+      host: "{{ env_var('DW_DB_HOST', 'localhost') }}"
+      port: "{{ env_var('DW_DB_PORT', '5434') | int }}"
+      user: "{{ env_var('DW_DB_USER', 'user') }}"
+      password: "{{ env_var('DW_DB_PASSWORD', 'password') }}"
+      dbname: "{{ env_var('DW_DB_NAME', 'warehouse_db') }}"
+      threads: 4
+      keepalives_idle: 0
