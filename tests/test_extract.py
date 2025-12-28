@@ -4,9 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from scripts.extractors.api_extractor import json_to_dataframe, mock_marketing_api
 from scripts.extractors.db_extractor import (
-    extract_full_table,
-    extract_order_items_by_orders,
-    extract_orders,
+    extract_child_table_by_parent_table,
     extract_table_by_date,
 )
 
@@ -163,49 +161,44 @@ def sample_orders_df():
         "user_id": [10, 20, 30],
         "status": ["completed", "pending", "shipped"],
         "created_at": pd.date_range("2025-12-01", periods=3),
+        "updated_at": pd.date_range("2025-12-01", periods=3),
     })
 
 
-@pytest.fixture
-def sample_users_df():
-    """Sample users DataFrame for testing."""
-    return pd.DataFrame({
-        "id": [1, 2, 3],
-        "name": ["Alice", "Bob", "Charlie"],
-        "email": ["alice@test.com", "bob@test.com", "charlie@test.com"],
-        "address": ["123 Main St", "456 Oak Ave", "789 Pine Rd"],
-    })
-
-
-def test_extract_table_by_date(mock_db_connection, mock_read_sql, sample_orders_df):
-    """Test extracting table filtered by date."""
+def test_extract_table_parquet_format(mock_read_sql, sample_orders_df, tmp_path):
+    """Test that extracted data is saved in correct Parquet format."""
     mock_read_sql.return_value = sample_orders_df
     
-    result = extract_table_by_date("orders", "2025-12-01", "created_at")
-    
-    # Verify SQL query was called with correct parameters
-    mock_read_sql.assert_called_once()
-    call_args = mock_read_sql.call_args
-    assert "orders" in call_args[0][0]
-    assert "created_at::DATE" in call_args[0][0]
-    assert call_args[1]["params"] == ("2025-12-01",)
-    
-    # Verify result
-    assert isinstance(result, pd.DataFrame)
-    assert len(result) == 3
-    mock_db_connection.close.assert_called_once()
-
-
-def test_extract_orders(mock_read_sql, sample_orders_df, tmp_path):
-    """Test extracting orders for specific date."""
-    mock_read_sql.return_value = sample_orders_df
-    
-    # Mock get_data_lake_path
     with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
         output_path = tmp_path / "orders.parquet"
         mock_path.return_value = output_path
         
-        result_path = extract_orders("2025-12-01")
+        extract_table_by_date("orders", "2025-12-01")
+        
+        # Verify file is valid Parquet
+        df = pd.read_parquet(output_path)
+        assert isinstance(df, pd.DataFrame)
+        
+        # Verify data integrity
+        pd.testing.assert_frame_equal(df, sample_orders_df)
+
+
+def test_extract_table_by_date(mock_db_connection, mock_read_sql, sample_orders_df, tmp_path):
+    """Test extracting table filtered by date using updated_at."""
+    mock_read_sql.return_value = sample_orders_df
+    
+    with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
+        output_path = tmp_path / "orders.parquet"
+        mock_path.return_value = output_path
+        
+        result_path = extract_table_by_date("orders", "2025-12-01")
+        
+        # Verify SQL query was called with correct parameters
+        mock_read_sql.assert_called_once()
+        call_args = mock_read_sql.call_args
+        assert "orders" in call_args[0][0]
+        assert "updated_at::DATE" in call_args[0][0]
+        assert call_args[1]["params"] == ("2025-12-01",)
         
         # Verify file was created
         assert result_path == output_path
@@ -215,10 +208,29 @@ def test_extract_orders(mock_read_sql, sample_orders_df, tmp_path):
         df = pd.read_parquet(output_path)
         assert len(df) == 3
         assert "user_id" in df.columns
+        
+        # Verify connection cleanup
+        mock_db_connection.close.assert_called_once()
 
 
-def test_extract_order_items_by_orders(mock_read_sql, tmp_path):
-    """Test extracting order items for orders on specific date."""
+def test_extract_table_by_date_custom_column(mock_read_sql, sample_orders_df, tmp_path):
+    """Test extracting table with custom date column."""
+    mock_read_sql.return_value = sample_orders_df
+    
+    with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
+        output_path = tmp_path / "orders.parquet"
+        mock_path.return_value = output_path
+        
+        result_path = extract_table_by_date("orders", "2025-12-01", date_column="created_at")
+        
+        # Verify SQL uses custom column
+        call_args = mock_read_sql.call_args
+        assert "created_at::DATE" in call_args[0][0]
+        assert output_path.exists()
+
+
+def test_extract_child_table_by_parent_table(mock_db_connection, mock_read_sql, tmp_path):
+    """Test extracting child table based on parent table date."""
     order_items_df = pd.DataFrame({
         "id": [1, 2, 3],
         "order_id": [100, 101, 102],
@@ -231,12 +243,16 @@ def test_extract_order_items_by_orders(mock_read_sql, tmp_path):
         output_path = tmp_path / "order_items.parquet"
         mock_path.return_value = output_path
         
-        result_path = extract_order_items_by_orders("2025-12-01")
+        result_path = extract_child_table_by_parent_table(
+            "orders", "order_items", "order_id", "2025-12-01"
+        )
         
-        # Verify SQL includes JOIN with orders
+        # Verify SQL includes JOIN with parent table
         call_args = mock_read_sql.call_args
         assert "order_items" in call_args[0][0]
-        assert "INNER JOIN orders" in call_args[0][0]
+        assert "JOIN orders" in call_args[0][0]
+        assert "order_id" in call_args[0][0]
+        assert "updated_at::DATE" in call_args[0][0]
         
         # Verify file was created
         assert result_path == output_path
@@ -246,56 +262,26 @@ def test_extract_order_items_by_orders(mock_read_sql, tmp_path):
         assert len(df) == 3
         assert "order_id" in df.columns
         assert "product_id" in df.columns
+        
+        # Verify connection cleanup
+        mock_db_connection.close.assert_called_once()
 
 
-def test_extract_full_table(mock_read_sql, sample_users_df, tmp_path):
-    """Test extracting full table snapshot."""
-    mock_read_sql.return_value = sample_users_df
-    
-    with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
-        output_path = tmp_path / "users.parquet"
-        mock_path.return_value = output_path
-        
-        result_path = extract_full_table("users", "2025-12-01")
-        
-        # Verify SQL is simple SELECT *
-        call_args = mock_read_sql.call_args
-        assert "SELECT * FROM users" in call_args[0][0]
-        
-        # Verify file was created
-        assert result_path == output_path
-        assert output_path.exists()
-        
-        df = pd.read_parquet(output_path)
-        assert len(df) == 3
-        assert "email" in df.columns
-
-
-def test_extract_orders_empty_result(mock_read_sql, tmp_path):
-    """Test extracting orders when no data for date."""
-    empty_df = pd.DataFrame(columns=["id", "user_id", "status", "created_at"])
+def test_extract_table_by_date_empty_result(mock_read_sql, tmp_path):
+    """Test extracting table when no data for date."""
+    empty_df = pd.DataFrame(columns=["id", "user_id", "status", "created_at", "updated_at"])
     mock_read_sql.return_value = empty_df
     
     with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
         output_path = tmp_path / "orders_empty.parquet"
         mock_path.return_value = output_path
         
-        result_path = extract_orders("2025-01-01")
+        result_path = extract_table_by_date("orders", "2025-01-01")
         
         # Should still create file even if empty
         assert output_path.exists()
         df = pd.read_parquet(output_path)
         assert len(df) == 0
-
-
-def test_extract_table_connection_cleanup(mock_db_connection, mock_read_sql, sample_orders_df):
-    """Test that database connection is properly closed."""
-    mock_read_sql.return_value = sample_orders_df
-    
-    extract_table_by_date("orders", "2025-12-01")
-    
-    # Verify connection was closed
-    mock_db_connection.close.assert_called_once()
 
 
 def test_extract_table_connection_cleanup_on_error(mock_db_connection, mock_read_sql):
@@ -307,21 +293,3 @@ def test_extract_table_connection_cleanup_on_error(mock_db_connection, mock_read
     
     # Connection should still be closed
     mock_db_connection.close.assert_called_once()
-
-
-def test_extract_orders_parquet_format(mock_read_sql, sample_orders_df, tmp_path):
-    """Test that extracted data is saved in correct Parquet format."""
-    mock_read_sql.return_value = sample_orders_df
-    
-    with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
-        output_path = tmp_path / "orders.parquet"
-        mock_path.return_value = output_path
-        
-        extract_orders("2025-12-01")
-        
-        # Verify file is valid Parquet
-        df = pd.read_parquet(output_path)
-        assert isinstance(df, pd.DataFrame)
-        
-        # Verify data integrity
-        pd.testing.assert_frame_equal(df, sample_orders_df)

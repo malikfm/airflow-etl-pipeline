@@ -1,3 +1,4 @@
+"""Execute seeding locally."""
 import os
 import random
 from datetime import datetime, timedelta
@@ -45,7 +46,9 @@ def create_tables(conn: connection) -> None:
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 address TEXT,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TIMESTAMP
             );
         """)
 
@@ -55,7 +58,10 @@ def create_tables(conn: connection) -> None:
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 category VARCHAR(100),
-                price DECIMAL(10, 2) NOT NULL
+                price DECIMAL(10, 2) NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TIMESTAMP
             );
         """)
 
@@ -65,7 +71,8 @@ def create_tables(conn: connection) -> None:
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id),
                 status VARCHAR(50) NOT NULL,
-                created_at TIMESTAMP NOT NULL
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
         """)
 
@@ -86,12 +93,24 @@ def create_tables(conn: connection) -> None:
 def generate_users(num_users: int = 100) -> pd.DataFrame:
     """Generate user data."""
     users = []
-    for _ in range(num_users):
+    base_time = datetime.now() - timedelta(days=90)
+    
+    for i in range(num_users):
+        created_at = base_time + timedelta(days=random.randint(0, 30))
+        updated_at = created_at + timedelta(days=random.randint(0, 60))
+        
+        # 5% of users are soft deleted
+        deleted_at = None
+        if random.random() < 0.05:
+            deleted_at = updated_at + timedelta(days=random.randint(1, 20))
+        
         users.append({
             "name": fake.name(),
             "email": fake.unique.email(),
             "address": fake.address().replace("\n", ", "),
-            "updated_at": fake.date_time_between(start_date="-90d", end_date="now"),
+            "created_at": created_at,
+            "updated_at": updated_at,
+            "deleted_at": deleted_at,
         })
     return pd.DataFrame(users)
 
@@ -110,12 +129,25 @@ def generate_products(num_products: int = 50) -> pd.DataFrame:
     ]
 
     products = []
-    for _ in range(num_products):
+    base_time = datetime.now() - timedelta(days=90)
+    
+    for i in range(num_products):
         category = random.choice(categories)
+        created_at = base_time + timedelta(days=random.randint(0, 30))
+        updated_at = created_at + timedelta(days=random.randint(0, 60))
+        
+        # 3% of products are soft deleted (discontinued)
+        deleted_at = None
+        if random.random() < 0.03:
+            deleted_at = updated_at + timedelta(days=random.randint(1, 20))
+        
         products.append({
             "name": fake.catch_phrase(),
             "category": category,
             "price": round(random.uniform(5.0, 500.0), 2),
+            "created_at": created_at,
+            "updated_at": updated_at,
+            "deleted_at": deleted_at,
         })
     return pd.DataFrame(products)
 
@@ -181,6 +213,9 @@ def insert_data(conn: connection, table_name: str, df: pd.DataFrame) -> List[int
     Returns:
         List of inserted IDs
     """
+    # Replace NaT with None for PostgreSQL compatibility
+    df = df.replace({pd.NaT: None})
+    
     with conn.cursor() as cur:
         # Prepare column names and placeholders
         columns = df.columns.tolist()
@@ -220,6 +255,7 @@ def simulate_user_address_changes(conn: connection, user_ids: List[int], num_cha
                 UPDATE users
                 SET address = %s, updated_at = %s
                 WHERE id = %s
+                AND deleted_at IS NULL
                 """,
                 (new_address, updated_at, user_id),
             )

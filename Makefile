@@ -55,39 +55,27 @@ shell-dw:
 
 # Database Seeding
 
-seed-local:
+seed-locally:
 	@echo "Seeding source database (local)..."
 	@uv run python scripts/seed_source_db.py
 
-seed-docker:
-	@echo "Seeding source database (docker)..."
-	@docker-compose exec airflow-api-server python /opt/airflow/scripts/seed_source_db.py
-
-seed: seed-docker
-
 # Data Extraction
 
-extract-local:
+extract-locally:
 	@echo "Running extraction locally for date: $(DATE)"
 	@uv run python scripts/extract.py $(DATE)
 
-extract-docker:
-	@echo "Running extraction in Docker for date: $(DATE)"
-	@docker-compose exec airflow-api-server python /opt/airflow/scripts/extract.py $(DATE)
-
-extract: extract-docker
-
 # Data Quality Validation
 
-validate-local:
+validate-locally:
 	@echo "Running data quality validation locally for date: $(DATE)"
 	@uv run python scripts/validate.py $(DATE)
 
-validate-docker:
-	@echo "Running data quality validation in Docker for date: $(DATE)"
-	@docker-compose exec airflow-api-server python /opt/airflow/scripts/validate.py $(DATE)
+# Data Loading to Staging
 
-validate: validate-docker
+load-locally:
+	@echo "Running data loading locally for date: $(DATE)"
+	@uv run python scripts/load.py $(DATE)
 
 # Development
 
@@ -122,7 +110,7 @@ check-format:
 
 type-check:
 	@echo "Running type checker..."
-	@uv run mypy scripts/
+	@uv run ty scripts/
 
 qa: lint type-check test
 

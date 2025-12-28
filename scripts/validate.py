@@ -1,8 +1,6 @@
-import sys
-from pathlib import Path
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+"""Execute validation locally."""
+import argparse
+from datetime import datetime
 
 from scripts.common.data_quality import DataQualityValidator
 from scripts.common.file_utils import get_data_lake_path
@@ -33,7 +31,7 @@ def validate_extraction(execution_date: str) -> bool:
     print("\n1. Validating orders...")
     try:
         orders_path = get_data_lake_path("orders", execution_date)
-        result = validator.validate_orders("orders", orders_path)
+        result = validator.validate_parquet_file("orders", orders_path)
         results["orders"] = result
 
         if result["success"]:
@@ -51,7 +49,7 @@ def validate_extraction(execution_date: str) -> bool:
     print("\n2. Validating order items...")
     try:
         order_items_path = get_data_lake_path("order_items", execution_date)
-        result = validator.validate_order_items("order_items", order_items_path)
+        result = validator.validate_parquet_file("order_items", order_items_path)
         results["order_items"] = result
 
         if result["success"]:
@@ -69,7 +67,7 @@ def validate_extraction(execution_date: str) -> bool:
     print("\n3. Validating users...")
     try:
         users_path = get_data_lake_path("users", execution_date)
-        result = validator.validate_users("users", users_path)
+        result = validator.validate_parquet_file("users", users_path)
         results["users"] = result
 
         if result["success"]:
@@ -87,7 +85,7 @@ def validate_extraction(execution_date: str) -> bool:
     print("\n4. Validating products...")
     try:
         products_path = get_data_lake_path("products", execution_date)
-        result = validator.validate_products("products", products_path)
+        result = validator.validate_parquet_file("products", products_path)
         results["products"] = result
 
         if result["success"]:
@@ -105,7 +103,7 @@ def validate_extraction(execution_date: str) -> bool:
     print("\n5. Validating marketing...")
     try:
         marketing_path = get_data_lake_path("marketing", execution_date)
-        result = validator.validate_marketing("marketing", marketing_path)
+        result = validator.validate_parquet_file("marketing", marketing_path)
         results["marketing"] = result
 
         if result["success"]:
@@ -140,11 +138,18 @@ def _print_failures(result: dict) -> None:
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python scripts/validate.py YYYY-MM-DD")
-        sys.exit(1)
-
-    execution_date = sys.argv[1]
+    parser = argparse.ArgumentParser(description="Extract data sources for a given execution date.")
+    parser.add_argument("--execution-date", type=str, required=True, help="Date in YYYY-MM-DD format")
+    args = parser.parse_args()
+    
+    execution_date = args.execution_date
+    
+    # Validate date format
+    try:
+        datetime.strptime(execution_date, "%Y-%m-%d")
+    except ValueError:
+        print(f"Error: Invalid date format '{execution_date}'. Use YYYY-MM-DD.")
+        return 1
 
     # Run validation
     success = validate_extraction(execution_date)
@@ -152,11 +157,10 @@ def main():
     # Exit with appropriate code
     if not success:
         print("\nExiting with error code 1")
-        sys.exit(1)
+        return 1
     else:
         print("\nValidation completed successfully")
-        sys.exit(0)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

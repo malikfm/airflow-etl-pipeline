@@ -1,67 +1,59 @@
-import sys
+"""Execute extraction locally."""
+import argparse
 from datetime import datetime
-from pathlib import Path
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.extractors.api_extractor import extract_marketing_data
 from scripts.extractors.db_extractor import (
-    extract_full_table,
-    extract_order_items_by_orders,
-    extract_orders,
+    extract_child_table_by_parent_table,
+    extract_table_by_date,
 )
 
 
 def extract_all(execution_date: str) -> None:
-    """
-    Extract all data sources for a given execution date.
+    """Extract all data sources for a given execution date.
     
     Args:
         execution_date: Date in YYYY-MM-DD format
     """
     print(f"\nStarting extraction for {execution_date}")
-    print("=" * 50)
     
     # Extract transactional data (incremental)
     print("\n1. Extracting orders...")
-    extract_orders(execution_date)
+    extract_table_by_date("orders", execution_date)
     
     print("\n2. Extracting order items...")
-    extract_order_items_by_orders(execution_date)
+    extract_child_table_by_parent_table("orders", "order_items", "order_id", execution_date)
     
     # Extract dimension tables (full snapshot)
     print("\n3. Extracting users (full snapshot)...")
-    extract_full_table("users", execution_date)
+    extract_table_by_date("users", execution_date)
     
     print("\n4. Extracting products (full snapshot)...")
-    extract_full_table("products", execution_date)
+    extract_table_by_date("products", execution_date)
     
     # Extract marketing data from API
     print("\n5. Extracting marketing data from API...")
     extract_marketing_data(execution_date)
     
-    print("\n" + "=" * 50)
-    print(f"Extraction completed for {execution_date}\n")
+    print(f"\nExtraction completed for {execution_date}\n")
 
 
 def main():
-    """Main entry point for extraction script."""
-    if len(sys.argv) < 2:
-        print("Usage: python scripts/extract.py YYYY-MM-DD")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Extract data sources for a given execution date.")
+    parser.add_argument("--execution-date", type=str, required=True, help="Date in YYYY-MM-DD format")
+    args = parser.parse_args()
     
-    execution_date = sys.argv[1]
+    execution_date = args.execution_date
     
     # Validate date format
     try:
         datetime.strptime(execution_date, "%Y-%m-%d")
     except ValueError:
-        print(f"Error: Invalid date format '{execution_date}'. Use YYYY-MM-DD")
-        sys.exit(1)
+        print(f"Error: Invalid date format '{execution_date}'. Use YYYY-MM-DD.")
+        return 1
     
     extract_all(execution_date)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
