@@ -64,7 +64,7 @@ models:
         description: Deletion timestamp
 
   - name: orders
-    description: Orders from main platform
+    description: Orders
     columns:
       - name: id
         description: Order ID
@@ -82,7 +82,7 @@ models:
           - accepted_values:
               values: ['pending', 'shipped', 'delivered', 'cancelled']
       - name: created_at
-        description: Order creation timestamp
+        description: Creation timestamp
         data_tests:
           - not_null
       - name: updated_at
@@ -103,44 +103,10 @@ models:
         data_tests:
           - not_null
       - name: product_id
-        description: Reference to product
+        description: Product which was ordered
         data_tests:
           - not_null
       - name: quantity
-        description: Quantity ordered
-        data_tests:
-          - not_null
-
-  - name: marketing_spend
-    description: Marketing campaign spend data
-    columns:
-      - name: campaign_id
-        description: Campaign identifier
-        data_tests:
-          - not_null
-      - name: campaign_name
-        description: Campaign name
-        data_tests:
-          - not_null
-      - name: date
-        description: Campaign date
-        data_tests:
-          - not_null
-      - name: platform
-        description: Marketing platform
-        data_tests:
-          - not_null
-          - accepted_values:
-              values: ['Facebook', 'Google', 'LinkedIn']
-      - name: spend
-        description: Campaign spend amount
-        data_tests:
-          - not_null
-      - name: clicks
-        description: Number of clicks
-        data_tests:
-          - not_null
-      - name: impressions
-        description: Number of impressions
+        description: Order quantity of a product
         data_tests:
           - not_null
