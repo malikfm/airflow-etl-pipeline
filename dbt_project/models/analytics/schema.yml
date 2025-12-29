@@ -1,0 +1,102 @@
+models:
+  - name: fct_order_items
+    description: Answer revenue by product, quantity sold, product mix, and sales trends.
+    columns:
+      - name: order_item_id
+        description: Order item ID
+        data_tests:
+          - not_null
+          - unique
+      - name: order_id
+        description: Reference to order
+        data_tests:
+          - not_null
+      - name: user_id
+        description: User who placed the order
+        data_tests:
+          - not_null
+      - name: product_id
+        description: Product which was ordered
+        data_tests:
+          - not_null
+      - name: order_qty
+        description: Order quantity of a product
+        data_tests:
+          - not_null
+      - name: product_price
+        description: Price of one unit of the product at time of purchase
+        data_tests:
+          - not_null
+      - name: order_subtotal
+        description: Qty x product_price
+        data_tests:
+          - not_null
+      - name: created_at
+        description: Order creation timestamp
+        data_tests:
+          - not_null
+      - name: updated_at
+        description: Order last update timestamp
+        data_tests:
+          - not_null
+  
+  - name: fct_orders
+    description: Answer number of orders, avg. order value, orders per user, and conversion metrics.
+    columns:
+      - name: order_id
+        description: Order ID
+        data_tests:
+          - not_null
+          - unique
+      - name: user_id
+        description: User who placed the order
+        data_tests:
+          - not_null
+      - name: order_total
+        description: Total price of the order
+        data_tests:
+          - not_null
+      - name: order_item_count
+        description: Number of items in the order
+        data_tests:
+          - not_null
+      - name: created_at
+        description: Order creation timestamp
+        data_tests:
+          - not_null
+      - name: updated_at
+        description: Order last update timestamp
+        data_tests:
+          - not_null
+
+  - name: fct_daily_order_statistics
+    description: The state of orders and revenue on a given day.
+    columns:
+      - name: date
+        description: Date of measurement
+        data_tests:
+          - not_null
+      - name: daily_new_orders
+        description: Number of new orders in the date
+        data_tests:
+          - not_null
+      - name: daily_pending_orders
+        description: Number of pending orders in the date
+        data_tests:
+          - not_null
+      - name: daily_shipped_orders
+        description: Number of shipped orders in the date
+        data_tests:
+          - not_null
+      - name: daily_completed_orders
+        description: Number of completed orders in the date
+        data_tests:
+          - not_null
+      - name: daily_cancelled_orders
+        description: Number of cancelled orders in the date
+        data_tests:
+          - not_null
+      - name: daily_gmv
+        description: GMV in the date
+        data_tests:
+          - not_null
