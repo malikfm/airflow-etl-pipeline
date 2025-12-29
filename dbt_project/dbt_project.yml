@@ -21,14 +21,16 @@ models:
       +unique_key: id
     
     # Warehouse (facts and dimensions)
-    warehouse:
-      +schema: warehouse
+    analytics:
+      +schema: analytics
       dimensions:
-        +materialized: table
+        +materialized: incremental
+        +on_schema_change: "append_new_columns"
+        +unique_key: id
       facts:
         +materialized: incremental
         +on_schema_change: "append_new_columns"
-
+        +unique_key: date
 snapshots:
   ecommerce_dw:
     +target_schema: snapshots
