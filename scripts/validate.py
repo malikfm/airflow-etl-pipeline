@@ -99,24 +99,6 @@ def validate_extraction(execution_date: str) -> bool:
         print(f"Products validation ERROR: {e}")
         all_passed = False
 
-    # Validate marketing
-    print("\n5. Validating marketing...")
-    try:
-        marketing_path = get_data_lake_path("marketing", execution_date)
-        result = validator.validate_parquet_file("marketing", marketing_path)
-        results["marketing"] = result
-
-        if result["success"]:
-            print(f"Marketing validation PASSED")
-            print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
-        else:
-            print(f"Marketing validation FAILED")
-            all_passed = False
-            _print_failures(result)
-    except Exception as e:
-        print(f"Marketing validation ERROR: {e}")
-        all_passed = False
-
     # Print summary
     if all_passed:
         print("\nALL VALIDATIONS PASSED")

@@ -56,8 +56,6 @@ class DataQualityValidator:
                 expectations = self.get_order_expectations()
             case "order_items":
                 expectations = self.get_order_items_expectations()
-            case "marketing":
-                expectations = self.get_marketing_expectations()
             case _:
                 raise ValueError(f"Unknown context name: {context_name}")
 
@@ -198,37 +196,3 @@ class DataQualityValidator:
         ]
 
         return expectations
-
-    def get_marketing_expectations(self) -> List[ExpectationConfiguration]:
-        """Get expectations for marketing Parquet file.
-        
-        Expectations:
-        - File is not empty
-        - spend column exists
-        - spend is greater than 0
-        - platform is in expected set
-        
-        Returns:
-            List of expectations
-        """
-        expectations = [
-            ExpectationConfiguration(
-                type="expect_table_row_count_to_be_between",
-                kwargs={"min_value": 1}
-            ),
-            ExpectationConfiguration(
-                type="expect_column_to_exist",
-                kwargs={"column": "spend"}
-            ),
-            ExpectationConfiguration(
-                type="expect_column_values_to_be_between",
-                kwargs={"column": "spend", "min_value": 0, "strict_min": True}
-            ),
-            ExpectationConfiguration(
-                type="expect_column_values_to_be_in_set",
-                kwargs={"column": "platform", "value_set": ["Facebook", "Google", "LinkedIn"]}
-            )
-        ]
-
-        return expectations
-        

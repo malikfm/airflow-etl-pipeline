@@ -6,7 +6,6 @@ import pytest
 
 from scripts.loaders.staging_loader import (
     create_staging_schema,
-    load_marketing,
     load_order_items,
     load_orders,
     load_products,
@@ -209,31 +208,6 @@ def test_load_products(temp_parquet_file, mock_db_connection, mock_sqlalchemy_en
         assert result == 3
         assert any(
             "TRUNCATE TABLE staging.stg_products" in str(call)
-            for call in mock_cursor.execute.call_args_list
-        )
-
-
-def test_load_marketing(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
-    """Test loading marketing data."""
-    data = {
-        "campaign_id": ["CMP-001", "CMP-002"],
-        "campaign_name": ["Facebook Ads", "Google Ads"],
-        "date": pd.date_range("2025-12-01", periods=2),
-        "platform": ["Facebook", "Google"],
-        "spend": [1000.50, 2000.75],
-        "clicks": [500, 800],
-    }
-    file_path = temp_parquet_file(data, "marketing.parquet")
-
-    mock_connection, mock_cursor = mock_db_connection
-    mock_sqlalchemy_engine.return_value = MagicMock()
-
-    with patch.object(pd.DataFrame, "to_sql"):
-        result = load_marketing(file_path, "2025-12-01")
-
-        assert result == 2
-        assert any(
-            "TRUNCATE TABLE staging.stg_marketing" in str(call)
             for call in mock_cursor.execute.call_args_list
         )
 

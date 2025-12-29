@@ -6,8 +6,7 @@ from scripts.common.file_utils import get_data_lake_path
 
 
 def load_all_to_staging(execution_date: str) -> None:
-    """
-    Load all data from data lake to staging tables.
+    """Load all data from data lake to staging tables.
     
     Args:
         execution_date: Date in YYYY-MM-DD format
@@ -38,14 +37,8 @@ def load_all_to_staging(execution_date: str) -> None:
     products_count = truncate_and_load("products", products_path)
     print(f"Loaded {products_count} products")
     
-    # Load marketing
-    print("\n5. Loading marketing...")
-    marketing_path = get_data_lake_path("marketing", execution_date)
-    marketing_count = truncate_and_load("marketing", marketing_path)
-    print(f"Loaded {marketing_count} marketing records")
-    
     print(f"\nLoading completed for {execution_date}")
-    print(f"Total rows loaded: {orders_count + order_items_count + users_count + products_count + marketing_count}")
+    print(f"Total rows loaded: {orders_count + order_items_count + users_count + products_count}")
 
 
 def main():

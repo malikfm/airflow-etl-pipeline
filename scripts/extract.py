@@ -2,7 +2,6 @@
 import argparse
 from datetime import datetime
 
-from scripts.extractors.api_extractor import extract_marketing_data
 from scripts.extractors.db_extractor import (
     extract_child_table_by_parent_table,
     extract_table_by_date,
@@ -30,10 +29,6 @@ def extract_all(execution_date: str) -> None:
     
     print("\n4. Extracting products (full snapshot)...")
     extract_table_by_date("products", execution_date)
-    
-    # Extract marketing data from API
-    print("\n5. Extracting marketing data from API...")
-    extract_marketing_data(execution_date)
     
     print(f"\nExtraction completed for {execution_date}\n")
 
