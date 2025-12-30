@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 from unittest.mock import MagicMock, patch
 
-from scripts.extractors.db_extractor import (
+from scripts.extractors.extractor import (
     extract_child_table_by_parent_table,
     extract_table_by_date,
 )

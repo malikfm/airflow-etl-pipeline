@@ -6,6 +6,13 @@ from scripts.common.db_utils import get_source_db_connection
 from scripts.common.file_utils import get_data_lake_path
 
 
+def _check_file_exists(file_path: Path) -> bool:
+    if file_path.exists():
+        print(f"File {file_path} already exists. Skipping extraction.")
+        return True
+    return False
+
+
 def extract_table_by_date(
     table_name: str,
     execution_date: str,
@@ -21,6 +28,10 @@ def extract_table_by_date(
     Returns:
         Path to the saved Parquet file
     """
+    output_path = get_data_lake_path(table_name, execution_date)
+    if _check_file_exists(output_path):
+        return output_path
+    
     conn = get_source_db_connection()
     
     try:
@@ -33,7 +44,6 @@ def extract_table_by_date(
         df = pd.read_sql_query(query, conn, params=(execution_date,))
         print(f"Extracted {len(df)} rows from {table_name} for {execution_date}")
         
-        output_path = get_data_lake_path(table_name, execution_date)
         df.to_parquet(output_path, index=False, engine="pyarrow")
         
         print(f"Saved {len(df)} {table_name} to {output_path}")
@@ -63,6 +73,10 @@ def extract_child_table_by_parent_table(
     Returns:
         Path to the saved Parquet file
     """
+    output_path = get_data_lake_path(child_table_name, execution_date)
+    if _check_file_exists(output_path):
+        return output_path
+    
     conn = get_source_db_connection()
     
     try:
@@ -76,7 +90,6 @@ def extract_child_table_by_parent_table(
         df = pd.read_sql_query(query, conn, params=(execution_date,))
         print(f"Extracted {len(df)} {child_table_name} for {execution_date}")
         
-        output_path = get_data_lake_path(child_table_name, execution_date)
         df.to_parquet(output_path, index=False, engine="pyarrow")
         
         print(f"Saved {len(df)} {child_table_name} to {output_path}")
