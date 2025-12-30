@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine
 
-from scripts.common.db_utils import get_dw_db_connection
+from scripts.utils.database import get_dw_db_connection
 
 SCHEMA_NAME = "staging"
 

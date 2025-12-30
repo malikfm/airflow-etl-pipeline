@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from scripts.loaders.staging_loader import truncate_and_load
+from scripts.core.loader import truncate_and_load
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def temp_parquet_file(tmp_path):
 @pytest.fixture
 def mock_db_connection():
     """Mock database connection."""
-    with patch("scripts.loaders.staging_loader.get_dw_db_connection") as mock_conn:
+    with patch("scripts.core.loader.get_dw_db_connection") as mock_conn:
         mock_connection = MagicMock()
         mock_cursor = MagicMock()
         mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
@@ -34,7 +34,7 @@ def mock_db_connection():
 @pytest.fixture
 def mock_sqlalchemy_engine():
     """Mock SQLAlchemy engine."""
-    with patch("scripts.loaders.staging_loader.create_engine") as mock_engine:
+    with patch("scripts.core.loader.create_engine") as mock_engine:
         yield mock_engine
 
 

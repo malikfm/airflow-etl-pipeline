@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from scripts.common.db_utils import get_source_db_connection
-from scripts.common.file_utils import get_data_lake_path
+from scripts.utils.database import get_source_db_connection
+from scripts.utils.file import get_data_lake_path
 
 
 def _check_file_exists(file_path: Path) -> bool:

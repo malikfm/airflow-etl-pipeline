@@ -7,13 +7,13 @@ from airflow.sdk import DAG, task
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scripts.common.data_quality import DataQualityValidator
-from scripts.common.file_utils import get_data_lake_path
-from scripts.extractors.db_extractor import (
+from scripts.core.data_quality_validator import DataQualityValidator
+from scripts.core.extractor import (
     extract_child_table_by_parent_table,
     extract_table_by_date
 )
-from scripts.loaders.staging_loader import truncate_and_load
+from scripts.core.loader import truncate_and_load
+from scripts.utils.file import get_data_lake_path
 
 default_args = {
     "owner": "airflow",

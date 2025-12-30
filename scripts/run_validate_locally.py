@@ -2,8 +2,8 @@
 import argparse
 from datetime import datetime
 
-from scripts.validations.data_quality import DataQualityValidator
-from scripts.common.file_utils import get_data_lake_path
+from scripts.core.data_quality_validator import DataQualityValidator
+from scripts.utils.file import get_data_lake_path
 
 
 def validate_extraction(execution_date: str) -> bool:

@@ -2,7 +2,8 @@
 import argparse
 from datetime import datetime
 
-from scripts.common.file_utils import get_data_lake_path
+from scripts.core.loader import truncate_and_load
+from scripts.utils.file import get_data_lake_path
 
 
 def load_all_to_staging(execution_date: str) -> None:

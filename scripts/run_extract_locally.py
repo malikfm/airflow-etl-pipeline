@@ -2,7 +2,7 @@
 import argparse
 from datetime import datetime
 
-from scripts.extractors.extractor import (
+from scripts.core.extractor import (
     extract_child_table_by_parent_table,
     extract_table_by_date,
 )

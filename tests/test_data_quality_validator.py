@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts.validations.data_quality import DataQualityValidator
+from scripts.core.data_quality_validator import DataQualityValidator
 
 
 @pytest.fixture
