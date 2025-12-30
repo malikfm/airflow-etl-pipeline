@@ -5,7 +5,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 from scripts.utils.database import get_dw_db_connection
-from scripts.utils.files import check_file_exists
+from scripts.utils.file import check_file_exists
 
 SCHEMA_NAME = "staging"
 
