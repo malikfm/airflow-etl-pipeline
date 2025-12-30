@@ -2,7 +2,7 @@
 import argparse
 from datetime import datetime
 
-from scripts.common.data_quality import DataQualityValidator
+from scripts.validations.data_quality import DataQualityValidator
 from scripts.common.file_utils import get_data_lake_path
 
 

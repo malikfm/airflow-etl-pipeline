@@ -13,12 +13,13 @@ class DataQualityValidator:
 
     def validate_parquet_file(
         self,
-        context_name: str,
+        table_name: str,
         file_path: Path
     ) -> dict:
         """Validate a Parquet file against expectations using GX.
         
         Args:
+            table_name: Name of the table to validate
             file_path: Path to Parquet file
             
         Returns:
@@ -34,20 +35,20 @@ class DataQualityValidator:
         df = pd.read_parquet(file_path)
 
         # Add pandas data source
-        data_source = self.context.data_sources.add_pandas(f"{context_name}_data_source")
+        data_source = self.context.data_sources.add_pandas(f"{table_name}_data_source")
         
         # Add dataframe asset
-        data_asset = data_source.add_dataframe_asset(name=f"{context_name}_data_asset")
+        data_asset = data_source.add_dataframe_asset(name=f"{table_name}_data_asset")
         
         # Build batch definition
-        batch_definition = data_asset.add_batch_definition_whole_dataframe(f"{context_name}_batch")
+        batch_definition = data_asset.add_batch_definition_whole_dataframe(f"{table_name}_batch")
         
         # Link the batch to the dataframe
         batch_parameters = {"dataframe": df}
         validator = batch_definition.get_batch(batch_parameters)
 
         # Get expectation
-        match context_name:
+        match table_name:
             case "users":
                 expectations = self.get_users_expectations()
             case "products":
@@ -57,9 +58,9 @@ class DataQualityValidator:
             case "order_items":
                 expectations = self.get_order_items_expectations()
             case _:
-                raise ValueError(f"Unknown context name: {context_name}")
+                raise ValueError(f"Unknown context name: {table_name}")
 
-        suite = gx.ExpectationSuite(f"{context_name}_suite")
+        suite = gx.ExpectationSuite(f"{table_name}_suite")
         suite.add_expectation_configurations(expectations)
 
         # Run validation

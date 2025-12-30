@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import pytest
 from unittest.mock import MagicMock, patch
@@ -37,71 +38,48 @@ def sample_orders_df():
     })
 
 
-def test_extract_table_parquet_format(mock_read_sql, sample_orders_df, tmp_path):
-    """Test that extracted data is saved in correct Parquet format."""
-    mock_read_sql.return_value = sample_orders_df
-    
-    with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
-        output_path = tmp_path / "orders.parquet"
-        mock_path.return_value = output_path
-        
-        extract_table_by_date("orders", "2025-12-01")
-        
-        # Verify file is valid Parquet
-        df = pd.read_parquet(output_path)
-        assert isinstance(df, pd.DataFrame)
-        
-        # Verify data integrity
-        pd.testing.assert_frame_equal(df, sample_orders_df)
-
-
-def test_extract_table_by_date(mock_db_connection, mock_read_sql, sample_orders_df, tmp_path):
+def test_extract_table_by_date(mock_db_connection, mock_read_sql, sample_orders_df, tmp_path, monkeypatch):
     """Test extracting table filtered by date using updated_at."""
+    monkeypatch.chdir(tmp_path)
     mock_read_sql.return_value = sample_orders_df
+    output_path = f"{tmp_path}/data/orders/2025-12-01.parquet"
     
-    with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
-        output_path = tmp_path / "orders.parquet"
-        mock_path.return_value = output_path
+    extract_table_by_date("orders", "2025-12-01")
         
-        result_path = extract_table_by_date("orders", "2025-12-01")
-        
-        # Verify SQL query was called with correct parameters
-        mock_read_sql.assert_called_once()
-        call_args = mock_read_sql.call_args
-        assert "orders" in call_args[0][0]
-        assert "updated_at::DATE" in call_args[0][0]
-        assert call_args[1]["params"] == ("2025-12-01",)
-        
-        # Verify file was created
-        assert result_path == output_path
-        assert output_path.exists()
-        
-        # Verify data in parquet file
-        df = pd.read_parquet(output_path)
-        assert len(df) == 3
-        assert "user_id" in df.columns
-        
-        # Verify connection cleanup
-        mock_db_connection.close.assert_called_once()
+    # Verify SQL query was called with correct parameters
+    mock_read_sql.assert_called_once()
+    call_args = mock_read_sql.call_args
+    assert "orders" in call_args[0][0]
+    assert "updated_at::DATE" in call_args[0][0]
+    assert call_args[1]["params"] == ("2025-12-01",)
+    
+    # Verify file was created
+    assert os.path.exists(output_path)
+    
+    # Verify file is valid Parquet
+    df = pd.read_parquet(output_path)
+    assert isinstance(df, pd.DataFrame)
+    
+    # Verify data in parquet file
+    pd.testing.assert_frame_equal(df, sample_orders_df)
+    
+    # Verify connection cleanup
+    mock_db_connection.close.assert_called_once()
 
 
-def test_extract_table_by_date_custom_column(mock_read_sql, sample_orders_df, tmp_path):
+def test_extract_table_by_date_custom_column(mock_read_sql, sample_orders_df, tmp_path, monkeypatch):
     """Test extracting table with custom date column."""
+    monkeypatch.chdir(tmp_path)
     mock_read_sql.return_value = sample_orders_df
     
-    with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
-        output_path = tmp_path / "orders.parquet"
-        mock_path.return_value = output_path
+    extract_table_by_date("orders", "2025-12-01", date_column="created_at")
         
-        result_path = extract_table_by_date("orders", "2025-12-01", date_column="created_at")
-        
-        # Verify SQL uses custom column
-        call_args = mock_read_sql.call_args
-        assert "created_at::DATE" in call_args[0][0]
-        assert output_path.exists()
+    # Verify SQL uses custom column
+    call_args = mock_read_sql.call_args
+    assert "created_at::DATE" in call_args[0][0]
+    
 
-
-def test_extract_child_table_by_parent_table(mock_db_connection, mock_read_sql, tmp_path):
+def test_extract_child_table_by_parent_table(mock_db_connection, mock_read_sql, tmp_path, monkeypatch):
     """Test extracting child table based on parent table date."""
     order_items_df = pd.DataFrame({
         "id": [1, 2, 3],
@@ -110,50 +88,49 @@ def test_extract_child_table_by_parent_table(mock_db_connection, mock_read_sql, 
         "quantity": [2, 1, 5],
     })
     mock_read_sql.return_value = order_items_df
+    monkeypatch.chdir(tmp_path)
+    output_path = f"{tmp_path}/data/order_items/2025-12-01.parquet"
+
+    extract_child_table_by_parent_table(
+        "orders", "order_items", "order_id", "2025-12-01"
+    )
+        
+    # Verify SQL includes JOIN with parent table
+    call_args = mock_read_sql.call_args
+    assert "order_items" in call_args[0][0]
+    assert "JOIN orders" in call_args[0][0]
+    assert "order_id" in call_args[0][0]
+    assert "updated_at::DATE" in call_args[0][0]
     
-    with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
-        output_path = tmp_path / "order_items.parquet"
-        mock_path.return_value = output_path
-        
-        result_path = extract_child_table_by_parent_table(
-            "orders", "order_items", "order_id", "2025-12-01"
-        )
-        
-        # Verify SQL includes JOIN with parent table
-        call_args = mock_read_sql.call_args
-        assert "order_items" in call_args[0][0]
-        assert "JOIN orders" in call_args[0][0]
-        assert "order_id" in call_args[0][0]
-        assert "updated_at::DATE" in call_args[0][0]
-        
-        # Verify file was created
-        assert result_path == output_path
-        assert output_path.exists()
-        
-        df = pd.read_parquet(output_path)
-        assert len(df) == 3
-        assert "order_id" in df.columns
-        assert "product_id" in df.columns
-        
-        # Verify connection cleanup
-        mock_db_connection.close.assert_called_once()
+    # Verify file was created
+    assert os.path.exists(output_path)
+    
+    # Verify file is valid Parquet
+    df = pd.read_parquet(output_path)
+    assert isinstance(df, pd.DataFrame)
+    
+    # Verify data in parquet file
+    pd.testing.assert_frame_equal(df, order_items_df)
+    
+    # Verify connection cleanup
+    mock_db_connection.close.assert_called_once()
 
 
-def test_extract_table_by_date_empty_result(mock_read_sql, tmp_path):
+def test_extract_table_by_date_empty_result(mock_read_sql, tmp_path, monkeypatch):
     """Test extracting table when no data for date."""
     empty_df = pd.DataFrame(columns=["id", "user_id", "status", "created_at", "updated_at"])
     mock_read_sql.return_value = empty_df
-    
-    with patch("scripts.extractors.db_extractor.get_data_lake_path") as mock_path:
-        output_path = tmp_path / "orders_empty.parquet"
-        mock_path.return_value = output_path
+    monkeypatch.chdir(tmp_path)
+    output_path = f"{tmp_path}/data/orders/1970-01-01.parquet"
         
-        result_path = extract_table_by_date("orders", "2025-01-01")
+    extract_table_by_date("orders", "1970-01-01")
         
-        # Should still create file even if empty
-        assert output_path.exists()
-        df = pd.read_parquet(output_path)
-        assert len(df) == 0
+    # Should still create file even if empty
+    assert os.path.exists(output_path)
+
+    # Verify that the file is empty
+    df = pd.read_parquet(output_path)
+    assert len(df) == 0
 
 
 def test_extract_table_connection_cleanup_on_error(mock_db_connection, mock_read_sql):

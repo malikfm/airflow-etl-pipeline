@@ -6,16 +6,17 @@ from sqlalchemy import create_engine
 
 from scripts.common.db_utils import get_dw_db_connection
 
+SCHEMA_NAME = "staging"
 
 def _create_staging_schema(cur):
     """Create staging schema if it doesn't exist."""
-    cur.execute("CREATE SCHEMA IF NOT EXISTS staging")
-    print("Staging schema created/verified")
+    cur.execute(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}")
+    print(f"Staging schema created/verified: {SCHEMA_NAME}")
 
 
 def _create_staging_table(cur, table_name: str, df: pd.DataFrame):
     """Create staging table if it doesn't exist based on DataFrame schema."""
-    staging_table = f"staging.stg_{table_name}"
+    staging_table = f"{SCHEMA_NAME}.{table_name}"
     
     # Map pandas dtypes to PostgreSQL types
     type_mapping = {
@@ -72,7 +73,7 @@ def truncate_and_load(
     conn = get_dw_db_connection()
     
     try:
-        staging_table = f"staging.stg_{table_name}"
+        staging_table = f"{SCHEMA_NAME}.{table_name}"
         
         with conn.cursor() as cur:
             # Create schema and table if not exists (for first run)
@@ -91,9 +92,9 @@ def truncate_and_load(
         )
         
         df.to_sql(
-            f"stg_{table_name}",
+            table_name,
             engine,
-            schema="staging",
+            schema=SCHEMA_NAME,
             if_exists="delete_rows",  # truncate
             index=False,
             method="multi",

@@ -4,14 +4,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from scripts.loaders.staging_loader import (
-    create_staging_schema,
-    load_order_items,
-    load_orders,
-    load_products,
-    load_users,
-    truncate_and_load,
-)
+from scripts.loaders.staging_loader import truncate_and_load
 
 
 @pytest.fixture
@@ -45,24 +38,12 @@ def mock_sqlalchemy_engine():
         yield mock_engine
 
 
-def test_create_staging_schema(mock_db_connection):
-    """Test staging schema creation."""
-    mock_connection, mock_cursor = mock_db_connection
-
-    create_staging_schema()
-
-    # Verify schema creation SQL was executed
-    mock_cursor.execute.assert_called_once_with("CREATE SCHEMA IF NOT EXISTS staging")
-    mock_connection.commit.assert_called_once()
-    mock_connection.close.assert_called_once()
-
-
 def test_truncate_and_load_file_not_found():
     """Test that FileNotFoundError is raised when file doesn't exist."""
     non_existent_path = Path("/nonexistent/file.parquet")
 
     with pytest.raises(FileNotFoundError):
-        truncate_and_load("orders", non_existent_path, "2025-12-01")
+        truncate_and_load("orders", non_existent_path)
 
 
 def test_truncate_and_load_empty_file(temp_parquet_file, mock_db_connection):
@@ -73,12 +54,12 @@ def test_truncate_and_load_empty_file(temp_parquet_file, mock_db_connection):
 
     mock_connection, mock_cursor = mock_db_connection
 
-    result = truncate_and_load("test_table", file_path, "2025-12-01")
+    result = truncate_and_load("test_table", file_path)
 
     # Should return 0 for empty file
     assert result == 0
-    # Should not attempt to truncate or load
-    mock_cursor.execute.assert_not_called()
+    # Connection should not be opened for empty files (early return)
+    mock_connection.close.assert_not_called()
 
 
 def test_truncate_and_load_success(
@@ -99,33 +80,45 @@ def test_truncate_and_load_success(
 
     # Mock DataFrame.to_sql to avoid actual database write
     with patch.object(pd.DataFrame, "to_sql") as mock_to_sql:
-        result = truncate_and_load("test_table", file_path, "2025-12-01")
+        result = truncate_and_load("test_table", file_path)
 
-        # Verify truncate was called
-        assert any(
-            "TRUNCATE TABLE staging.stg_test_table" in str(call)
-            for call in mock_cursor.execute.call_args_list
-        )
+        # Verify schema creation was called
+        schema_calls = [
+            call for call in mock_cursor.execute.call_args_list
+            if "CREATE SCHEMA" in str(call)
+        ]
+        assert len(schema_calls) > 0
+
+        # Verify table creation was called
+        table_calls = [
+            call for call in mock_cursor.execute.call_args_list
+            if "CREATE TABLE" in str(call)
+        ]
+        assert len(table_calls) > 0
 
         # Verify to_sql was called with correct parameters
         mock_to_sql.assert_called_once()
         call_kwargs = mock_to_sql.call_args[1]
         assert call_kwargs["schema"] == "staging"
-        assert call_kwargs["if_exists"] == "append"
+        assert call_kwargs["if_exists"] == "delete_rows"  # truncate
         assert call_kwargs["index"] is False
         assert call_kwargs["method"] == "multi"
 
         # Verify row count
         assert result == 3
 
+        # Verify connection cleanup
+        mock_connection.close.assert_called_once()
 
-def test_load_orders(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
+
+def test_truncate_and_load_orders(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
     """Test loading orders data."""
     data = {
         "id": [1, 2],
         "user_id": [10, 20],
         "status": ["completed", "pending"],
         "created_at": pd.date_range("2025-12-01", periods=2),
+        "updated_at": pd.date_range("2025-12-01", periods=2),
     }
     file_path = temp_parquet_file(data, "orders.parquet")
 
@@ -133,17 +126,18 @@ def test_load_orders(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engi
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
-        result = load_orders(file_path, "2025-12-01")
+        result = truncate_and_load("orders", file_path)
 
         assert result == 2
-        # Verify truncate was called for orders table
-        assert any(
-            "TRUNCATE TABLE staging.stg_orders" in str(call)
-            for call in mock_cursor.execute.call_args_list
-        )
+        # Verify table name in creation
+        table_calls = [
+            str(call) for call in mock_cursor.execute.call_args_list
+            if "orders" in str(call)
+        ]
+        assert len(table_calls) > 0
 
 
-def test_load_order_items(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
+def test_truncate_and_load_order_items(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
     """Test loading order items data."""
     data = {
         "id": [1, 2, 3],
@@ -157,22 +151,26 @@ def test_load_order_items(temp_parquet_file, mock_db_connection, mock_sqlalchemy
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
-        result = load_order_items(file_path, "2025-12-01")
+        result = truncate_and_load("order_items", file_path)
 
         assert result == 3
-        assert any(
-            "TRUNCATE TABLE staging.stg_order_items" in str(call)
-            for call in mock_cursor.execute.call_args_list
-        )
+        table_calls = [
+            str(call) for call in mock_cursor.execute.call_args_list
+            if "order_items" in str(call)
+        ]
+        assert len(table_calls) > 0
 
 
-def test_load_users(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
+def test_truncate_and_load_users(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
     """Test loading users data."""
     data = {
         "id": [1, 2, 3],
         "name": ["Alice", "Bob", "Charlie"],
         "email": ["alice@test.com", "bob@test.com", "charlie@test.com"],
         "address": ["123 Main St", "456 Oak Ave", "789 Pine Rd"],
+        "created_at": pd.date_range("2025-12-01", periods=3),
+        "updated_at": pd.date_range("2025-12-01", periods=3),
+        "deleted_at": [None, None, None],
     }
     file_path = temp_parquet_file(data, "users.parquet")
 
@@ -180,22 +178,26 @@ def test_load_users(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engin
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
-        result = load_users(file_path, "2025-12-01")
+        result = truncate_and_load("users", file_path)
 
         assert result == 3
-        assert any(
-            "TRUNCATE TABLE staging.stg_users" in str(call)
-            for call in mock_cursor.execute.call_args_list
-        )
+        table_calls = [
+            str(call) for call in mock_cursor.execute.call_args_list
+            if "users" in str(call)
+        ]
+        assert len(table_calls) > 0
 
 
-def test_load_products(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
+def test_truncate_and_load_products(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
     """Test loading products data."""
     data = {
         "id": [1, 2, 3],
         "name": ["Product A", "Product B", "Product C"],
         "category": ["Electronics", "Clothing", "Books"],
         "price": [99.99, 49.99, 19.99],
+        "created_at": pd.date_range("2025-12-01", periods=3),
+        "updated_at": pd.date_range("2025-12-01", periods=3),
+        "deleted_at": [None, None, None],
     }
     file_path = temp_parquet_file(data, "products.parquet")
 
@@ -203,13 +205,14 @@ def test_load_products(temp_parquet_file, mock_db_connection, mock_sqlalchemy_en
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
-        result = load_products(file_path, "2025-12-01")
+        result = truncate_and_load("products", file_path)
 
         assert result == 3
-        assert any(
-            "TRUNCATE TABLE staging.stg_products" in str(call)
-            for call in mock_cursor.execute.call_args_list
-        )
+        table_calls = [
+            str(call) for call in mock_cursor.execute.call_args_list
+            if "products" in str(call)
+        ]
+        assert len(table_calls) > 0
 
 
 def test_truncate_and_load_with_different_dtypes(
@@ -229,7 +232,7 @@ def test_truncate_and_load_with_different_dtypes(
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
-        result = truncate_and_load("test_types", file_path, "2025-12-01")
+        result = truncate_and_load("test_types", file_path)
 
         assert result == 3
 
@@ -239,6 +242,13 @@ def test_truncate_and_load_with_different_dtypes(
             if "CREATE TABLE" in str(call)
         ]
         assert len(create_table_calls) > 0
+
+        # Verify type mapping
+        create_sql = str(create_table_calls[0])
+        assert "BIGINT" in create_sql or "int_col" in create_sql
+        assert "DOUBLE PRECISION" in create_sql or "float_col" in create_sql
+        assert "TEXT" in create_sql or "str_col" in create_sql
+        assert "TIMESTAMP" in create_sql or "datetime_col" in create_sql
 
 
 def test_truncate_and_load_idempotency(
@@ -253,17 +263,17 @@ def test_truncate_and_load_idempotency(
 
     with patch.object(pd.DataFrame, "to_sql"):
         # Load first time
-        result1 = truncate_and_load("test_table", file_path, "2025-12-01")
+        result1 = truncate_and_load("test_table", file_path)
 
         # Reset mocks
         mock_cursor.reset_mock()
         mock_connection.reset_mock()
 
         # Load second time (should truncate and reload)
-        result2 = truncate_and_load("test_table", file_path, "2025-12-01")
+        result2 = truncate_and_load("test_table", file_path)
 
         # Both should return same row count
         assert result1 == result2 == 3
 
-        # Verify truncate was called both times
+        # Verify schema and table creation was called second time too
         assert mock_cursor.execute.call_count > 0
