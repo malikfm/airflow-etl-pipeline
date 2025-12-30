@@ -227,13 +227,33 @@ def generate_users(num_users: int = 100) -> pd.DataFrame:
     base_time = datetime.now() - timedelta(days=90)
     
     for i in range(num_users):
-        created_at = base_time + timedelta(days=random.randint(0, 30))
-        updated_at = created_at + timedelta(days=random.randint(0, 60))
-        
-        # 5% of users are soft deleted
         deleted_at = None
-        if random.random() < 0.05:
-            deleted_at = updated_at + timedelta(days=random.randint(1, 20))
+        timedelta_created_at = random.randint(0, 90)
+        created_at = base_time + timedelta(days=timedelta_created_at)
+
+        # Add some randomness to hours/minutes
+        created_at = created_at.replace(
+            hour=random.randint(0, 23),
+            minute=random.randint(0, 59),
+            second=random.randint(0, 59),
+        )
+
+        if timedelta_created_at == 90:
+            updated_at = created_at
+        else:
+            timedelta_updated_at = min(random.randint(0, 89), 90 - timedelta_created_at)
+            updated_at = created_at + timedelta(days=timedelta_updated_at)
+
+            # Add some randomness to hours/minutes
+            updated_at = updated_at.replace(
+                hour=random.randint(0, 23),
+                minute=random.randint(0, 59),
+                second=random.randint(0, 59),
+            )
+        
+            # 5% of users are soft deleted
+            if random.random() < 0.05:
+                deleted_at = updated_at
         
         users.append({
             "name": fake.name(),
@@ -263,14 +283,34 @@ def generate_products(num_products: int = 50) -> pd.DataFrame:
     base_time = datetime.now() - timedelta(days=90)
     
     for i in range(num_products):
-        category = random.choice(categories)
-        created_at = base_time + timedelta(days=random.randint(0, 30))
-        updated_at = created_at + timedelta(days=random.randint(0, 60))
-        
-        # 3% of products are soft deleted (discontinued)
         deleted_at = None
-        if random.random() < 0.03:
-            deleted_at = updated_at + timedelta(days=random.randint(1, 20))
+        category = random.choice(categories)
+        timedelta_created_at = random.randint(0, 90)
+        created_at = base_time + timedelta(days=timedelta_created_at)
+
+        # Add some randomness to hours/minutes
+        created_at = created_at.replace(
+            hour=random.randint(0, 23),
+            minute=random.randint(0, 59),
+            second=random.randint(0, 59),
+        )
+
+        if timedelta_created_at == 90:
+            updated_at = created_at
+        else:
+            timedelta_updated_at = min(random.randint(0, 89), 90 - timedelta_created_at)
+            updated_at = created_at + timedelta(days=timedelta_updated_at)
+
+            # Add some randomness to hours/minutes
+            updated_at = updated_at.replace(
+                hour=random.randint(0, 23),
+                minute=random.randint(0, 59),
+                second=random.randint(0, 59),
+            )
+
+            # 3% of products are soft deleted
+            if random.random() < 0.03:
+                deleted_at = updated_at
         
         products.append({
             "name": fake.catch_phrase(),
@@ -288,26 +328,65 @@ def generate_orders(user_ids: List[int], num_orders: int = 500) -> pd.DataFrame:
     statuses = ["pending", "shipped", "completed", "cancelled"]
     orders = []
 
-    # Calculate date range (last 3 months)
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=90)
+    base_time = datetime.now() - timedelta(days=90)
 
     for _ in range(num_orders):
-        # Generate random date within the last 3 months
-        random_days = random.randint(0, 90)
-        created_at = start_date + timedelta(days=random_days)
+        status = random.choice(statuses)
+        if status == "pending":
+            created_at = base_time + timedelta(days=random.randint(76, 90))
 
-        # Add some randomness to hours/minutes
-        created_at = created_at.replace(
-            hour=random.randint(0, 23),
-            minute=random.randint(0, 59),
-            second=random.randint(0, 59),
-        )
+            # Add some randomness to hours/minutes
+            created_at = created_at.replace(
+                hour=random.randint(0, 23),
+                minute=random.randint(0, 59),
+                second=random.randint(0, 59),
+            )
+
+            updated_at = created_at
+        
+        elif status == "shipped":
+            created_at = base_time + timedelta(days=random.randint(61, 85))
+
+            # Add some randomness to hours/minutes
+            created_at = created_at.replace(
+                hour=random.randint(0, 23),
+                minute=random.randint(0, 59),
+                second=random.randint(0, 59),
+            )
+
+            updated_at = created_at + timedelta(days=random.randint(1, 5))
+
+            # Add some randomness to hours/minutes
+            updated_at = updated_at.replace(
+                hour=random.randint(0, 23),
+                minute=random.randint(0, 59),
+                second=random.randint(0, 59),
+            )
+        
+        else:
+            created_at = base_time + timedelta(days=random.randint(11, 75))
+
+            # Add some randomness to hours/minutes
+            created_at = created_at.replace(
+                hour=random.randint(0, 23),
+                minute=random.randint(0, 59),
+                second=random.randint(0, 59),
+            )
+
+            updated_at = created_at + timedelta(days=random.randint(5, 15))
+
+            # Add some randomness to hours/minutes
+            updated_at = updated_at.replace(
+                hour=random.randint(0, 23),
+                minute=random.randint(0, 59),
+                second=random.randint(0, 59),
+            )
 
         orders.append({
             "user_id": random.choice(user_ids),
-            "status": random.choice(statuses),
+            "status": status,
             "created_at": created_at,
+            "updated_at": updated_at,
         })
 
     return pd.DataFrame(orders)
@@ -368,33 +447,6 @@ def insert_data(conn: connection, table_name: str, df: pd.DataFrame) -> List[int
         return ids
 
 
-def simulate_user_address_changes(conn: connection, user_ids: List[int], num_changes: int = 20) -> None:
-    """
-    Simulate address changes for some users (for SCD Type 2 testing).
-
-    This updates the address and updated_at timestamp for
-    random users at different points in time.
-    """
-    with conn.cursor() as cur:
-        for _ in range(num_changes):
-            user_id = random.choice(user_ids)
-            new_address = fake.address().replace("\n", ", ")
-            updated_at = fake.date_time_between(start_date="-60d", end_date="now")
-
-            cur.execute(
-                """
-                UPDATE users
-                SET address = %s, updated_at = %s
-                WHERE id = %s
-                AND deleted_at IS NULL
-                """,
-                (new_address, updated_at, user_id),
-            )
-
-        conn.commit()
-        print(f"Simulated {num_changes} address changes for SCD Type 2 testing")
-
-
 def print_summary(conn: connection) -> None:
     """Print summary of seeded data."""
     with conn.cursor() as cur:
@@ -433,10 +485,6 @@ def main():
         print("\nGenerating users...")
         users_df = generate_users(num_users=100)
         user_ids = insert_data(conn, "users", users_df)
-
-        # Simulate address changes for SCD Type 2
-        print("Simulating user address changes...")
-        simulate_user_address_changes(conn, user_ids, num_changes=20)
 
         print("Generating products...")
         products_df = generate_products(num_products=50)
