@@ -323,8 +323,11 @@ def generate_products(num_products: int = 50) -> pd.DataFrame:
     return pd.DataFrame(products)
 
 
-def generate_orders(user_ids: List[int], num_orders: int = 500) -> pd.DataFrame:
-    """Generate orders spanning the last 3 months, this allows for backfill testing."""
+def generate_orders(users_df: pd.DataFrame, num_orders: int = 500) -> pd.DataFrame:
+    """Generate orders spanning the last 3 months.
+    
+    Orders are created after the user exists (order.created_at > user.created_at).
+    """
     statuses = ["pending", "shipped", "completed", "cancelled"]
     orders = []
 
@@ -332,30 +335,69 @@ def generate_orders(user_ids: List[int], num_orders: int = 500) -> pd.DataFrame:
 
     for _ in range(num_orders):
         status = random.choice(statuses)
+        
         if status == "pending":
-            created_at = base_time + timedelta(days=random.randint(76, 90))
+            # Create user lookup for created_at
+            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.today() - pd.Timedelta(days=1)]
+            user_created_at = filtered_users_df.set_index("id")["created_at"].to_dict()
+            user_ids = list(user_created_at.keys())
 
+            # Select a random user
+            user_id = random.choice(user_ids)
+            user_created = user_created_at[user_id]
+
+            # Ensure order is created after user exists
+            # Calculate minimum days after user creation
+            days_since_base = (user_created - base_time).days
+
+            # Pending orders are recent (last 2 weeks)
+            created_at = base_time + timedelta(days=random.randint(max(days_since_base, 76), 90))
+            
             # Add some randomness to hours/minutes
             created_at = created_at.replace(
                 hour=random.randint(0, 23),
                 minute=random.randint(0, 59),
                 second=random.randint(0, 59),
             )
-
+            
+            # There might be a case where the day is the same but the hour is before user created
+            # Ensure order is after user
+            if created_at <= user_created:
+                created_at = user_created + timedelta(hours=random.randint(1, 24))
+            
             updated_at = created_at
         
         elif status == "shipped":
-            created_at = base_time + timedelta(days=random.randint(61, 85))
+            # Create user lookup for created_at
+            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.today() - pd.Timedelta(days=5)]
+            user_created_at = filtered_users_df.set_index("id")["created_at"].to_dict()
+            user_ids = list(user_created_at.keys())
 
+            # Select a random user
+            user_id = random.choice(user_ids)
+            user_created = user_created_at[user_id]
+
+            # Ensure order is created after user exists
+            # Calculate minimum days after user creation
+            days_since_base = (user_created - base_time).days
+
+            # Shipped orders are 1-4 weeks old
+            created_at = base_time + timedelta(days=random.randint(max(days_since_base, 61), 85))
+            
             # Add some randomness to hours/minutes
             created_at = created_at.replace(
                 hour=random.randint(0, 23),
                 minute=random.randint(0, 59),
                 second=random.randint(0, 59),
             )
-
+            
+            # There might be a case where the day is the same but the hour is before user created
+            # Ensure order is after user
+            if created_at <= user_created:
+                created_at = user_created + timedelta(hours=random.randint(1, 24))
+            
             updated_at = created_at + timedelta(days=random.randint(1, 5))
-
+            
             # Add some randomness to hours/minutes
             updated_at = updated_at.replace(
                 hour=random.randint(0, 23),
@@ -363,18 +405,37 @@ def generate_orders(user_ids: List[int], num_orders: int = 500) -> pd.DataFrame:
                 second=random.randint(0, 59),
             )
         
-        else:
-            created_at = base_time + timedelta(days=random.randint(11, 75))
+        else:  # completed or cancelled
+            # Create user lookup for created_at
+            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.today() - pd.Timedelta(days=15)]
+            user_created_at = filtered_users_df.set_index("id")["created_at"].to_dict()
+            user_ids = list(user_created_at.keys())
 
+            # Select a random user
+            user_id = random.choice(user_ids)
+            user_created = user_created_at[user_id]
+
+            # Ensure order is created after user exists
+            # Calculate minimum days after user creation
+            days_since_base = (user_created - base_time).days
+
+            # Older orders (1-11 weeks old)
+            created_at = base_time + timedelta(days=random.randint(max(days_since_base, 11), 75))
+            
             # Add some randomness to hours/minutes
             created_at = created_at.replace(
                 hour=random.randint(0, 23),
                 minute=random.randint(0, 59),
                 second=random.randint(0, 59),
             )
-
+            
+            # There might be a case where the day is the same but the hour is before user created
+            # Ensure order is after user
+            if created_at <= user_created:
+                created_at = user_created + timedelta(hours=random.randint(1, 24))
+            
             updated_at = created_at + timedelta(days=random.randint(5, 15))
-
+            
             # Add some randomness to hours/minutes
             updated_at = updated_at.replace(
                 hour=random.randint(0, 23),
@@ -383,7 +444,7 @@ def generate_orders(user_ids: List[int], num_orders: int = 500) -> pd.DataFrame:
             )
 
         orders.append({
-            "user_id": random.choice(user_ids),
+            "user_id": user_id,
             "status": status,
             "created_at": created_at,
             "updated_at": updated_at,
@@ -392,15 +453,37 @@ def generate_orders(user_ids: List[int], num_orders: int = 500) -> pd.DataFrame:
     return pd.DataFrame(orders)
 
 
-def generate_order_items(order_ids: List[int], product_ids: List[int]) -> pd.DataFrame:
-    """Generate order items (1-5 items per order)."""
+def generate_order_items(orders_df: pd.DataFrame, products_df: pd.DataFrame) -> pd.DataFrame:
+    """Generate order items (1-5 items per order).
+    
+    Products in order items must exist before the order was created
+    (product.created_at < order.created_at).
+    """
     order_items = []
+    
+    # Create product lookup for created_at
+    products_df = products_df[products_df["created_at"] < pd.Timestamp.today()]
+    product_created_at = products_df.set_index("id")["created_at"].to_dict()
+    product_ids = list(product_created_at.keys())
 
-    for order_id in order_ids:
+    for _, order in orders_df.iterrows():
+        order_id = order["id"]
+        order_created = order["created_at"]
+        
+        # Filter products that existed before this order was created
+        available_products = [
+            pid for pid in product_ids 
+            if product_created_at[pid] < order_created
+        ]
+        
+        # If no products available (shouldn't happen with our data), skip
+        if not available_products:
+            continue
+        
         # Each order has 1-5 items
-        num_items = random.randint(1, 5)
-        selected_products = random.sample(product_ids, min(num_items, len(product_ids)))
-
+        num_items = random.randint(1, min(5, len(available_products)))
+        selected_products = random.sample(available_products, num_items)
+        
         for product_id in selected_products:
             order_items.append({
                 "order_id": order_id,
@@ -485,17 +568,23 @@ def main():
         print("\nGenerating users...")
         users_df = generate_users(num_users=100)
         user_ids = insert_data(conn, "users", users_df)
+        # Add IDs to DataFrame for later use
+        users_df['id'] = user_ids
 
         print("Generating products...")
         products_df = generate_products(num_products=50)
         product_ids = insert_data(conn, "products", products_df)
+        # Add IDs to DataFrame for later use
+        products_df['id'] = product_ids
 
         print("Generating orders (spanning 3 months)...")
-        orders_df = generate_orders(user_ids, num_orders=500)
+        orders_df = generate_orders(users_df, num_orders=500)
         order_ids = insert_data(conn, "orders", orders_df)
+        # Add IDs to DataFrame for later use
+        orders_df['id'] = order_ids
 
         print("Generating order items...")
-        order_items_df = generate_order_items(order_ids, product_ids)
+        order_items_df = generate_order_items(orders_df, products_df)
         insert_data(conn, "order_items", order_items_df)
 
         print("\nSummary:")
