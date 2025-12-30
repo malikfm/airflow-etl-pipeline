@@ -100,7 +100,7 @@ def test_truncate_and_load_success(
         mock_to_sql.assert_called_once()
         call_kwargs = mock_to_sql.call_args[1]
         assert call_kwargs["schema"] == "staging"
-        assert call_kwargs["if_exists"] == "delete_rows"  # truncate
+        assert call_kwargs["if_exists"] == "replace"  # truncate and insert
         assert call_kwargs["index"] is False
         assert call_kwargs["method"] == "multi"
 

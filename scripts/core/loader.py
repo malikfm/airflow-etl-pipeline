@@ -95,7 +95,7 @@ def truncate_and_load(
             table_name,
             engine,
             schema=SCHEMA_NAME,
-            if_exists="delete_rows",  # truncate
+            if_exists="replace",  # truncate and insert
             index=False,
             method="multi",
         )
