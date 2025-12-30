@@ -57,25 +57,25 @@ shell-dw:
 
 seed-locally:
 	@echo "Seeding source database (local)..."
-	@uv run python scripts/seed_source_db.py
+	@uv run python -m scripts.seed_source_db
 
 # Data Extraction
 
 extract-locally:
 	@echo "Running extraction locally for date: $(DATE)"
-	@uv run python scripts/extract.py $(DATE)
+	@uv run python -m scripts.run_extract_locally --execution-date $(DATE)
 
 # Data Quality Validation
 
 validate-locally:
 	@echo "Running data quality validation locally for date: $(DATE)"
-	@uv run python scripts/validate.py $(DATE)
+	@uv run python -m scripts.run_validate_locally --execution-date $(DATE)
 
 # Data Loading to Staging
 
 load-locally:
 	@echo "Running data loading locally for date: $(DATE)"
-	@uv run python scripts/load.py $(DATE)
+	@uv run python -m scripts.run_load_locally --execution-date $(DATE)
 
 # Development
 
