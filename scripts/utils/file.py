@@ -1,9 +1,13 @@
 from pathlib import Path
 
 
+def check_file_exists(file_path: Path) -> bool:
+    """Check if a file exists."""
+    return file_path.exists()
+
+
 def get_data_lake_path(table_name: str, execution_date: str) -> Path:
-    """
-    Generate data lake path for a given table and execution date.
+    """Generate data lake path for a given table and execution date.
     
     Args:
         table_name: Name of the table (e.g., 'orders', 'products')

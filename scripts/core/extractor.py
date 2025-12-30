@@ -3,14 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from scripts.utils.database import get_source_db_connection
-from scripts.utils.file import get_data_lake_path
-
-
-def _check_file_exists(file_path: Path) -> bool:
-    if file_path.exists():
-        print(f"File {file_path} already exists. Skipping extraction.")
-        return True
-    return False
+from scripts.utils.file import check_file_exists, get_data_lake_path
 
 
 def extract_table_by_date(
@@ -27,7 +20,8 @@ def extract_table_by_date(
         Path to the saved Parquet file
     """
     output_path = get_data_lake_path(table_name, execution_date)
-    if _check_file_exists(output_path):
+    if check_file_exists(output_path):
+        print(f"File {output_path} already exists. Skipping extraction.")
         return output_path
     
     conn = get_source_db_connection()
@@ -78,7 +72,8 @@ def extract_child_table_by_parent_table(
     """
     parent_parquet_path = get_data_lake_path(parent_table_name, execution_date)
     output_path = get_data_lake_path(child_table_name, execution_date)
-    if _check_file_exists(output_path):
+    if check_file_exists(output_path):
+        print(f"File {output_path} already exists. Skipping extraction.")
         return output_path
     
     # Get parent ids from parent parquet file
