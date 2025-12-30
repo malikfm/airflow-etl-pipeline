@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 from unittest.mock import MagicMock, patch
 
-from scripts.extractors.extractor import (
+from scripts.core.extractor import (
     extract_child_table_by_parent_table,
     extract_table_by_date,
 )
@@ -13,7 +13,7 @@ from scripts.extractors.extractor import (
 @pytest.fixture
 def mock_db_connection():
     """Mock database connection for testing."""
-    with patch("scripts.extractors.db_extractor.get_source_db_connection") as mock_conn:
+    with patch("scripts.core.extractor.get_source_db_connection") as mock_conn:
         mock_connection = MagicMock()
         mock_conn.return_value = mock_connection
         yield mock_connection
@@ -22,7 +22,7 @@ def mock_db_connection():
 @pytest.fixture
 def mock_read_sql():
     """Mock pandas read_sql_query."""
-    with patch("scripts.extractors.db_extractor.pd.read_sql_query") as mock_read:
+    with patch("scripts.core.extractor.pd.read_sql_query") as mock_read:
         yield mock_read
 
 
@@ -142,3 +142,70 @@ def test_extract_table_connection_cleanup_on_error(mock_db_connection, mock_read
     
     # Connection should still be closed
     mock_db_connection.close.assert_called_once()
+
+
+def test_extract_table_by_date_file_exists_skip_extraction(
+    mock_db_connection, mock_read_sql, sample_orders_df, tmp_path, monkeypatch
+):
+    """Test that extraction is skipped when file already exists."""
+    empty_df = pd.DataFrame(columns=["id", "user_id", "status", "created_at", "updated_at"])
+    mock_read_sql.return_value = empty_df
+    monkeypatch.chdir(tmp_path)
+    output_path = f"{tmp_path}/data/orders/2025-12-01.parquet"
+    
+    # Create the file first
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    sample_orders_df.to_parquet(output_path, index=False)
+    
+    # Now try to extract - should skip
+    result_path = extract_table_by_date("orders", "2025-12-01")
+    
+    # Verify file path is returned (relative path)
+    assert str(result_path) == "data/orders/2025-12-01.parquet"
+    
+    # Verify SQL was NOT called (extraction skipped)
+    mock_read_sql.assert_not_called()
+    
+    # Verify connection was NOT opened (extraction skipped)
+    mock_db_connection.close.assert_not_called()
+    
+    # Verify file unchanged, not overwritten by empty_df
+    df = pd.read_parquet(output_path)
+    pd.testing.assert_frame_equal(df, sample_orders_df)
+
+
+def test_extract_child_table_by_parent_table_file_exists_skip_extraction(
+    mock_db_connection, mock_read_sql, tmp_path, monkeypatch
+):
+    """Test that child table extraction is skipped when file already exists."""
+    order_items_df = pd.DataFrame({
+        "id": [1, 2, 3],
+        "order_id": [100, 101, 102],
+        "product_id": [50, 51, 52],
+        "quantity": [2, 1, 5],
+    })
+    
+    monkeypatch.chdir(tmp_path)
+    output_path = f"{tmp_path}/data/order_items/2025-12-01.parquet"
+    
+    # Create the file first
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    order_items_df.to_parquet(output_path, index=False)
+    
+    # Now try to extract - should skip
+    result_path = extract_child_table_by_parent_table(
+        "orders", "order_items", "order_id", "2025-12-01"
+    )
+    
+    # Verify file path is returned (relative path)
+    assert str(result_path) == "data/order_items/2025-12-01.parquet"
+    
+    # Verify SQL was NOT called (extraction skipped)
+    mock_read_sql.assert_not_called()
+    
+    # Verify connection was NOT opened (extraction skipped)
+    mock_db_connection.close.assert_not_called()
+    
+    # Verify file still exists with original data
+    df = pd.read_parquet(output_path)
+    pd.testing.assert_frame_equal(df, order_items_df)
