@@ -94,10 +94,6 @@ def extract_child_table_by_parent_table(
         
         df = pd.read_sql_query(query, conn, params=(parent_ids,))
         print(f"Extracted {len(df)} {child_table_name} for {execution_date}")
-        
-        if df.empty:
-            print(f"No new data for {child_table_name} for {execution_date}")
-            return None
 
         df.to_parquet(output_path, index=False, engine="pyarrow")
         print(f"Saved {len(df)} {child_table_name} to {output_path}")

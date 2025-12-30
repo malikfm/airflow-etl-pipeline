@@ -165,42 +165,6 @@ def test_extract_child_table_by_parent_table_empty_parent(tmp_path, monkeypatch)
     assert not os.path.exists(output_path)
 
 
-def test_extract_child_table_by_parent_table_empty_child(mock_read_sql, mock_db_connection, tmp_path, monkeypatch):
-    """Test extracting child table when child has no matching data returns None."""
-    # Create parent parquet file with data
-    parent_df = pd.DataFrame({
-        "id": [100, 101],
-        "user_id": [1, 2],
-        "status": ["completed", "pending"],
-        "created_at": pd.date_range("2025-12-01", periods=2),
-        "updated_at": pd.date_range("2025-12-01", periods=2),
-    })
-    
-    monkeypatch.chdir(tmp_path)
-    parent_path = f"{tmp_path}/data/orders/2025-12-01.parquet"
-    os.makedirs(os.path.dirname(parent_path), exist_ok=True)
-    parent_df.to_parquet(parent_path, index=False)
-    
-    # Mock empty result from child table query
-    empty_child_df = pd.DataFrame(columns=["id", "order_id", "product_id", "quantity"])
-    mock_read_sql.return_value = empty_child_df
-    
-    output_path = f"{tmp_path}/data/order_items/2025-12-01.parquet"
-    
-    result = extract_child_table_by_parent_table(
-        "orders", "order_items", "id", "order_id", "2025-12-01"
-    )
-    
-    # Should return None when child is empty
-    assert result is None
-    
-    # Should NOT create file
-    assert not os.path.exists(output_path)
-    
-    # Verify connection cleanup
-    mock_db_connection.close.assert_called_once()
-
-
 def test_extract_table_connection_cleanup_on_error(mock_db_connection, mock_read_sql):
     """Test that connection is closed even when error occurs."""
     mock_read_sql.side_effect = Exception("Database error")
