@@ -184,7 +184,9 @@ def test_extract_child_table_by_parent_table_file_exists_skip_extraction(
         "product_id": [50, 51, 52],
         "quantity": [2, 1, 5],
     })
+    empty_df = pd.DataFrame(columns=["id", "order_id", "product_id", "quantity"])
     
+    mock_read_sql.return_value = empty_df
     monkeypatch.chdir(tmp_path)
     output_path = f"{tmp_path}/data/order_items/2025-12-01.parquet"
     
@@ -206,6 +208,6 @@ def test_extract_child_table_by_parent_table_file_exists_skip_extraction(
     # Verify connection was NOT opened (extraction skipped)
     mock_db_connection.close.assert_not_called()
     
-    # Verify file still exists with original data
+    # Verify file unchanged, not overwritten by empty_df
     df = pd.read_parquet(output_path)
     pd.testing.assert_frame_equal(df, order_items_df)
