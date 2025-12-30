@@ -34,7 +34,7 @@ def extract_table_by_date(
             OR updated_at::DATE = %s
         """
         
-        df = pd.read_sql_query(query, conn, params=(execution_date,))
+        df = pd.read_sql_query(query, conn, params=(execution_date, execution_date))
         print(f"Extracted {len(df)} rows from {table_name} for {execution_date}")
         
         if df.empty:
@@ -87,12 +87,12 @@ def extract_child_table_by_parent_table(
     
     try:
         query = f"""
-            SELECT c.* 
+            SELECT * 
             FROM {child_table_name}
             WHERE {foreign_key_in_child} IN %s
         """
         
-        df = pd.read_sql_query(query, conn, params=(parent_ids,))
+        df = pd.read_sql_query(query, conn, params=(tuple(parent_ids),))
         print(f"Extracted {len(df)} {child_table_name} for {execution_date}")
 
         df.to_parquet(output_path, index=False, engine="pyarrow")

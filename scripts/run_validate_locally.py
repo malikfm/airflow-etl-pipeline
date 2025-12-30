@@ -3,7 +3,7 @@ import argparse
 from datetime import datetime
 
 from scripts.core.data_quality_validator import DataQualityValidator
-from scripts.utils.file import get_data_lake_path
+from scripts.utils.file import check_file_exists, get_data_lake_path
 
 
 def validate_extraction(execution_date: str) -> bool:
@@ -28,7 +28,7 @@ def validate_extraction(execution_date: str) -> bool:
     results = {}
 
     # Validate orders
-    print("\n1. Validating orders parent-child...")
+    print("\n1. Validating orders...")
     orders_path = get_data_lake_path("orders", execution_date)
     if check_file_exists(orders_path):
         try:
@@ -45,9 +45,13 @@ def validate_extraction(execution_date: str) -> bool:
         except Exception as e:
             print(f"Orders validation ERROR: {e}")
             all_passed = False
-        
-        print("\n1.1 Validating order items...")
-        order_items_path = get_data_lake_path("order_items", execution_date)
+    else:
+        print(f"No data found for orders for {execution_date}. Skipping validation.")
+
+    # Validate order items
+    print("\n2. Validating order items...")
+    order_items_path = get_data_lake_path("order_items", execution_date)
+    if check_file_exists(order_items_path):
         try:
             result = validator.validate_parquet_file("order_items", order_items_path)
             results["order_items"] = result
@@ -63,7 +67,7 @@ def validate_extraction(execution_date: str) -> bool:
             print(f"Order items validation ERROR: {e}")
             all_passed = False
     else:
-        print(f"No data found for orders for {execution_date}. Skipping validation.")
+        print(f"No data found for order items for {execution_date}. Skipping validation.")
 
     # Validate users
     print("\n2. Validating users...")
