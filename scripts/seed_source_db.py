@@ -1,7 +1,7 @@
 """Execute seeding locally."""
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 import pandas as pd
@@ -58,9 +58,9 @@ def create_source_tables(conn: connection) -> None:
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 address TEXT,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                deleted_at TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
 
@@ -71,9 +71,9 @@ def create_source_tables(conn: connection) -> None:
                 name VARCHAR(255) NOT NULL,
                 category VARCHAR(100),
                 price DECIMAL(10, 2) NOT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                deleted_at TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
 
@@ -83,8 +83,8 @@ def create_source_tables(conn: connection) -> None:
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id),
                 status VARCHAR(50) NOT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
         """)
 
@@ -136,9 +136,9 @@ def create_warehouse_tables(conn: connection) -> None:
                 name VARCHAR(255),
                 email VARCHAR(255),
                 address TEXT,
-                created_at TIMESTAMP,
-                updated_at TIMESTAMP,
-                deleted_at TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE,
+                updated_at TIMESTAMP WITH TIME ZONE,
+                deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
         
@@ -148,9 +148,9 @@ def create_warehouse_tables(conn: connection) -> None:
                 name VARCHAR(255),
                 category VARCHAR(100),
                 price DECIMAL(10, 2),
-                created_at TIMESTAMP,
-                updated_at TIMESTAMP,
-                deleted_at TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE,
+                updated_at TIMESTAMP WITH TIME ZONE,
+                deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
         
@@ -159,8 +159,8 @@ def create_warehouse_tables(conn: connection) -> None:
                 id INTEGER,
                 user_id INTEGER,
                 status VARCHAR(50),
-                created_at TIMESTAMP,
-                updated_at TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE,
+                updated_at TIMESTAMP WITH TIME ZONE
             );
         """)
         
@@ -180,9 +180,9 @@ def create_warehouse_tables(conn: connection) -> None:
                 name VARCHAR(255),
                 email VARCHAR(255),
                 address TEXT,
-                created_at TIMESTAMP,
-                updated_at TIMESTAMP,
-                deleted_at TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE,
+                updated_at TIMESTAMP WITH TIME ZONE,
+                deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
         
@@ -192,9 +192,9 @@ def create_warehouse_tables(conn: connection) -> None:
                 name VARCHAR(255),
                 category VARCHAR(100),
                 price DECIMAL(10, 2),
-                created_at TIMESTAMP,
-                updated_at TIMESTAMP,
-                deleted_at TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE,
+                updated_at TIMESTAMP WITH TIME ZONE,
+                deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
         
@@ -203,8 +203,8 @@ def create_warehouse_tables(conn: connection) -> None:
                 id INTEGER,
                 user_id INTEGER,
                 status VARCHAR(50),
-                created_at TIMESTAMP,
-                updated_at TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE,
+                updated_at TIMESTAMP WITH TIME ZONE
             );
         """)
         
@@ -224,7 +224,7 @@ def create_warehouse_tables(conn: connection) -> None:
 def generate_users(num_users: int = 100) -> pd.DataFrame:
     """Generate user data."""
     users = []
-    base_time = datetime.now() - timedelta(days=90)
+    base_time = datetime.now(timezone.utc) - timedelta(days=90)
     
     for i in range(num_users):
         deleted_at = None
@@ -280,7 +280,7 @@ def generate_products(num_products: int = 50) -> pd.DataFrame:
     ]
 
     products = []
-    base_time = datetime.now() - timedelta(days=90)
+    base_time = datetime.now(timezone.utc) - timedelta(days=90)
     
     for i in range(num_products):
         deleted_at = None
@@ -331,14 +331,14 @@ def generate_orders(users_df: pd.DataFrame, num_orders: int = 500) -> pd.DataFra
     statuses = ["pending", "shipped", "completed", "cancelled"]
     orders = []
 
-    base_time = datetime.now() - timedelta(days=90)
+    base_time = datetime.now(timezone.utc) - timedelta(days=90)
 
     for _ in range(num_orders):
         status = random.choice(statuses)
         
         if status == "pending":
             # Create user lookup for created_at
-            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.today() - pd.Timedelta(days=1)]
+            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=1)]
             user_created_at = filtered_users_df.set_index("id")["created_at"].to_dict()
             user_ids = list(user_created_at.keys())
 
@@ -369,7 +369,7 @@ def generate_orders(users_df: pd.DataFrame, num_orders: int = 500) -> pd.DataFra
         
         elif status == "shipped":
             # Create user lookup for created_at
-            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.today() - pd.Timedelta(days=5)]
+            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=5)]
             user_created_at = filtered_users_df.set_index("id")["created_at"].to_dict()
             user_ids = list(user_created_at.keys())
 
@@ -407,7 +407,7 @@ def generate_orders(users_df: pd.DataFrame, num_orders: int = 500) -> pd.DataFra
         
         else:  # completed or cancelled
             # Create user lookup for created_at
-            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.today() - pd.Timedelta(days=15)]
+            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=15)]
             user_created_at = filtered_users_df.set_index("id")["created_at"].to_dict()
             user_ids = list(user_created_at.keys())
 
