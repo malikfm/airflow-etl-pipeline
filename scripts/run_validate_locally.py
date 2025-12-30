@@ -28,76 +28,84 @@ def validate_extraction(execution_date: str) -> bool:
     results = {}
 
     # Validate orders
-    print("\n1. Validating orders...")
-    try:
-        orders_path = get_data_lake_path("orders", execution_date)
-        result = validator.validate_parquet_file("orders", orders_path)
-        results["orders"] = result
+    print("\n1. Validating orders parent-child...")
+    orders_path = get_data_lake_path("orders", execution_date)
+    if check_file_exists(orders_path):
+        try:
+            result = validator.validate_parquet_file("orders", orders_path)
+            results["orders"] = result
 
-        if result["success"]:
-            print(f"Orders validation PASSED")
-            print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
-        else:
-            print(f"Orders validation FAILED")
+            if result["success"]:
+                print(f"Orders validation PASSED")
+                print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
+            else:
+                print(f"Orders validation FAILED")
+                all_passed = False
+                _print_failures(result)
+        except Exception as e:
+            print(f"Orders validation ERROR: {e}")
             all_passed = False
-            _print_failures(result)
-    except Exception as e:
-        print(f"Orders validation ERROR: {e}")
-        all_passed = False
-
-    # Validate order items
-    print("\n2. Validating order items...")
-    try:
+        
+        print("\n1.1 Validating order items...")
         order_items_path = get_data_lake_path("order_items", execution_date)
-        result = validator.validate_parquet_file("order_items", order_items_path)
-        results["order_items"] = result
+        try:
+            result = validator.validate_parquet_file("order_items", order_items_path)
+            results["order_items"] = result
 
-        if result["success"]:
-            print(f"Order items validation PASSED")
-            print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
-        else:
-            print(f"Order items validation FAILED")
+            if result["success"]:
+                print(f"Order items validation PASSED")
+                print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
+            else:
+                print(f"Order items validation FAILED")
+                all_passed = False
+                _print_failures(result)
+        except Exception as e:
+            print(f"Order items validation ERROR: {e}")
             all_passed = False
-            _print_failures(result)
-    except Exception as e:
-        print(f"Order items validation ERROR: {e}")
-        all_passed = False
+    else:
+        print(f"No data found for orders for {execution_date}. Skipping validation.")
 
     # Validate users
-    print("\n3. Validating users...")
-    try:
-        users_path = get_data_lake_path("users", execution_date)
-        result = validator.validate_parquet_file("users", users_path)
-        results["users"] = result
+    print("\n2. Validating users...")
+    users_path = get_data_lake_path("users", execution_date)
+    if check_file_exists(users_path):
+        try:
+            result = validator.validate_parquet_file("users", users_path)
+            results["users"] = result
 
-        if result["success"]:
-            print(f"Users validation PASSED")
-            print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
-        else:
-            print(f"Users validation FAILED")
+            if result["success"]:
+                print(f"Users validation PASSED")
+                print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
+            else:
+                print(f"Users validation FAILED")
+                all_passed = False
+                _print_failures(result)
+        except Exception as e:
+            print(f"Users validation ERROR: {e}")
             all_passed = False
-            _print_failures(result)
-    except Exception as e:
-        print(f"Users validation ERROR: {e}")
-        all_passed = False
+    else:
+        print(f"No data found for users for {execution_date}. Skipping validation.")
 
     # Validate products
-    print("\n4. Validating products...")
-    try:
-        products_path = get_data_lake_path("products", execution_date)
-        result = validator.validate_parquet_file("products", products_path)
-        results["products"] = result
+    print("\n3. Validating products...")
+    products_path = get_data_lake_path("products", execution_date)
+    if check_file_exists(products_path):
+        try:
+            result = validator.validate_parquet_file("products", products_path)
+            results["products"] = result
 
-        if result["success"]:
-            print(f"Products validation PASSED")
-            print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
-        else:
-            print(f"Products validation FAILED")
+            if result["success"]:
+                print(f"Products validation PASSED")
+                print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
+            else:
+                print(f"Products validation FAILED")
+                all_passed = False
+                _print_failures(result)
+        except Exception as e:
+            print(f"Products validation ERROR: {e}")
             all_passed = False
-            _print_failures(result)
-    except Exception as e:
-        print(f"Products validation ERROR: {e}")
-        all_passed = False
+    else:
+        print(f"No data found for products for {execution_date}. Skipping validation.")
 
     # Print summary
     if all_passed:

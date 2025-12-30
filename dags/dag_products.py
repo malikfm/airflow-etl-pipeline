@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 import pendulum
+from airflow.operators.empty import EmptyOperator
 from airflow.sdk import DAG, task
 
 # Add parent directory to path for imports
@@ -56,6 +57,20 @@ with DAG(
         )
 
 
+    @task.branch(task_id="any_data_for_this_date")
+    def validate_extracted_file_exists(table_name: str, **context):
+        """Check if a file exists."""
+        execution_date = context["ds"]
+        file_path = get_data_lake_path(table_name, execution_date)
+        
+        if not check_file_exists(file_path):
+            print(f"No data for {execution_date}")
+            return "end_pipeline"
+        
+        print(f"Data for {execution_date} exists")
+        return f"validate_extracted_{table_name}"
+
+
     @task
     def validate_extracted_data(table_name: str, **context):
         """Validate extracted data quality.
@@ -92,9 +107,13 @@ with DAG(
 
 
     # Set task dependencies
+    start_pipeline = EmptyOperator(task_id="start_pipeline", dag=dag)
+
     extract_to_lake = extract_data_to_lake_by_date.override(
         task_id=f"extract_{TABLE_NAME}_to_lake"
     )(TABLE_NAME)
+
+    branch = validate_extracted_file_exists(TABLE_NAME)
     
     validate = validate_extracted_data.override(
         task_id=f"validate_extracted_{TABLE_NAME}"
@@ -103,5 +122,9 @@ with DAG(
     load_to_staging = load_data_to_staging.override(
         task_id=f"load_{TABLE_NAME}_to_staging"
     )(TABLE_NAME)
+
+    end_pipeline = EmptyOperator(task_id="end_pipeline", dag=dag)
     
-    extract_to_lake >> validate >> load_to_staging
+    start_pipeline >> extract_to_lake >> branch
+    branch >> validate >> load_to_staging >> end_pipeline
+    branch >> end_pipeline

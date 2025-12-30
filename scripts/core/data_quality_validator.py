@@ -24,13 +24,7 @@ class DataQualityValidator:
             
         Returns:
             Validation results dictionary
-            
-        Raises:
-            FileNotFoundError: If file doesn't exist
         """
-        if not file_path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
-
         # Read parquet file
         df = pd.read_parquet(file_path)
 
