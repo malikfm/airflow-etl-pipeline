@@ -21,7 +21,7 @@ def extract_all(execution_date: str) -> None:
     extract_table_by_date("orders", execution_date)
     
     print("\n2. Extracting order items...")
-    extract_child_table_by_parent_table("orders", "order_items", "order_id", execution_date)
+    extract_child_table_by_parent_table("orders", "order_items", "id", "order_id", execution_date)
     
     # Extract dimension tables (full snapshot)
     print("\n3. Extracting users (full snapshot)...")
