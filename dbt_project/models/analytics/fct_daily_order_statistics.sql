@@ -48,15 +48,46 @@ daily_gmv as (
     from {{ ref('raw', 'order_items') }} oi
     join completed_orders co on oi.order_id = co.id
     join {{ ref('raw', 'products') }} p on oi.product_id = p.id
-    group by oi.order_id
+),
+
+prev_total as (
+    select
+        total_completed_orders,
+        total_cancelled_orders,
+        total_orders,
+        total_gmv
+    from {{ this }}
+    where date = date_info.date
 )
 
 select
     date_info.date,
+    -- Orders
     daily_new_orders.daily_new_orders,
     daily_order_status.daily_pending_orders,
     daily_order_status.daily_shipped_orders,
     daily_order_status.daily_completed_orders,
     daily_order_status.daily_cancelled_orders,
-    daily_gmv.daily_gmv
-from date_info, daily_new_orders, daily_order_status, daily_gmv
+    if(
+        prev_total.total_completed_orders is null,
+        daily_order_status.daily_completed_orders,
+        prev_total.total_completed_orders + daily_order_status.daily_completed_orders
+    ) as total_completed_orders,
+    if(
+        prev_total.total_cancelled_orders is null,
+        daily_order_status.daily_cancelled_orders,
+        prev_total.total_cancelled_orders + daily_order_status.daily_cancelled_orders
+    ) as total_cancelled_orders,
+    if(
+        prev_total.total_orders is null,
+        daily_order_status.daily_new_orders,
+        prev_total.total_completed_orders + daily_order_status.daily_new_orders
+    ) as total_orders,
+    -- GMV
+    daily_gmv.daily_gmv,
+    if(
+        prev_total.total_gmv is null,
+        daily_gmv.daily_gmv,
+        prev_total.total_gmv + daily_gmv.daily_gmv
+    ) as total_gmv
+from date_info, daily_new_orders, daily_order_status, daily_gmv, prev_total

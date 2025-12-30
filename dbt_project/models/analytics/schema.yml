@@ -96,7 +96,23 @@ models:
         description: Number of cancelled orders in the date
         data_tests:
           - not_null
+      - name: total_completed_orders
+        description: Cumulative number of completed orders up to the date
+        data_tests:
+          - not_null
+      - name: total_cancelled_orders
+        description: Cumulative number of cancelled orders up to the date
+        data_tests:
+          - not_null
+      - name: total_orders
+        description: Cumulative number of orders up to the date
+        data_tests:
+          - not_null
       - name: daily_gmv
         description: GMV in the date
+        data_tests:
+          - not_null
+      - name: total_gmv
+        description: Cumulative GMV up to the date
         data_tests:
           - not_null
