@@ -16,7 +16,7 @@ Faker.seed(42)  # For reproducibility
 random.seed(42)
 
 
-def get_db_connection() -> connection:
+def get_src_db_connection() -> connection:
     """Create connection to postgres-source database."""
     conn = psycopg2.connect(
         host=os.getenv("SOURCE_DB_HOST", "localhost"),
@@ -28,8 +28,20 @@ def get_db_connection() -> connection:
     return conn
 
 
-def create_tables(conn: connection) -> None:
-    """Create tables in source database if they don't exist."""
+def get_dw_db_connection() -> connection:
+    """Create connection to postgres-dw (warehouse) database."""
+    conn = psycopg2.connect(
+        host=os.getenv("DW_DB_HOST", "localhost"),
+        port=os.getenv("DW_DB_PORT", "5434"),
+        database=os.getenv("DW_DB_NAME", "warehouse_db"),
+        user=os.getenv("DW_DB_USER", "user"),
+        password=os.getenv("DW_DB_PASSWORD", "password"),
+    )
+    return conn
+
+
+def create_source_tables(conn: connection) -> None:
+    """Create tables in source database."""
     with conn.cursor() as cur:
         # Drop tables if exist (for clean slate)
         cur.execute("""
@@ -88,6 +100,125 @@ def create_tables(conn: connection) -> None:
 
         conn.commit()
         print("Tables created successfully")
+
+
+def create_warehouse_tables(conn: connection) -> None:
+    """Create tables in warehouse database for staging and raw schemas.
+    
+    Tables are created without constraints.
+    Schema and data types match source database.
+    """
+    with conn.cursor() as cur:
+        # Create schemas
+        cur.execute("CREATE SCHEMA IF NOT EXISTS staging")
+        cur.execute("CREATE SCHEMA IF NOT EXISTS raw")
+        
+        # Drop existing tables in staging
+        cur.execute("""
+            DROP TABLE IF EXISTS staging.order_items CASCADE;
+            DROP TABLE IF EXISTS staging.orders CASCADE;
+            DROP TABLE IF EXISTS staging.products CASCADE;
+            DROP TABLE IF EXISTS staging.users CASCADE;
+        """)
+        
+        # Drop existing tables in raw
+        cur.execute("""
+            DROP TABLE IF EXISTS raw.order_items CASCADE;
+            DROP TABLE IF EXISTS raw.orders CASCADE;
+            DROP TABLE IF EXISTS raw.products CASCADE;
+            DROP TABLE IF EXISTS raw.users CASCADE;
+        """)
+        
+        # Create staging tables (no constraints, no defaults)
+        cur.execute("""
+            CREATE TABLE staging.users (
+                id INTEGER,
+                name VARCHAR(255),
+                email VARCHAR(255),
+                address TEXT,
+                created_at TIMESTAMP,
+                updated_at TIMESTAMP,
+                deleted_at TIMESTAMP
+            );
+        """)
+        
+        cur.execute("""
+            CREATE TABLE staging.products (
+                id INTEGER,
+                name VARCHAR(255),
+                category VARCHAR(100),
+                price DECIMAL(10, 2),
+                created_at TIMESTAMP,
+                updated_at TIMESTAMP,
+                deleted_at TIMESTAMP
+            );
+        """)
+        
+        cur.execute("""
+            CREATE TABLE staging.orders (
+                id INTEGER,
+                user_id INTEGER,
+                status VARCHAR(50),
+                created_at TIMESTAMP,
+                updated_at TIMESTAMP
+            );
+        """)
+        
+        cur.execute("""
+            CREATE TABLE staging.order_items (
+                id INTEGER,
+                order_id INTEGER,
+                product_id INTEGER,
+                quantity INTEGER
+            );
+        """)
+        
+        # Create raw tables (same structure as staging)
+        cur.execute("""
+            CREATE TABLE raw.users (
+                id INTEGER,
+                name VARCHAR(255),
+                email VARCHAR(255),
+                address TEXT,
+                created_at TIMESTAMP,
+                updated_at TIMESTAMP,
+                deleted_at TIMESTAMP
+            );
+        """)
+        
+        cur.execute("""
+            CREATE TABLE raw.products (
+                id INTEGER,
+                name VARCHAR(255),
+                category VARCHAR(100),
+                price DECIMAL(10, 2),
+                created_at TIMESTAMP,
+                updated_at TIMESTAMP,
+                deleted_at TIMESTAMP
+            );
+        """)
+        
+        cur.execute("""
+            CREATE TABLE raw.orders (
+                id INTEGER,
+                user_id INTEGER,
+                status VARCHAR(50),
+                created_at TIMESTAMP,
+                updated_at TIMESTAMP
+            );
+        """)
+        
+        cur.execute("""
+            CREATE TABLE raw.order_items (
+                id INTEGER,
+                order_id INTEGER,
+                product_id INTEGER,
+                quantity INTEGER
+            );
+        """)
+        
+        conn.commit()
+        print("Warehouse tables created successfully (staging and raw schemas)")
 
 
 def generate_users(num_users: int = 100) -> pd.DataFrame:
@@ -289,13 +420,15 @@ def print_summary(conn: connection) -> None:
 
 def main():
     print("\nStarting database seeding process...")
+    
+    # Seed source database
     print("\nConnecting to postgres-source...")
-    conn = get_db_connection()
+    conn = get_src_db_connection()
     print("Connected successfully")
 
     try:
         print("\nCreating tables...")
-        create_tables(conn)
+        create_source_tables(conn)
 
         print("\nGenerating users...")
         users_df = generate_users(num_users=100)
@@ -320,15 +453,33 @@ def main():
         print("\nSummary:")
         print_summary(conn)
 
-        print("\nDatabase seeding completed successfully!")
+        print("\nSource database seeding completed successfully!")
 
     except Exception as e:
-        print(f"\nError during seeding: {e}")
+        print(f"\nError during source seeding: {e}")
         conn.rollback()
         raise
     finally:
         conn.close()
-        print("\nDatabase connection closed.\n")
+        print("Source database connection closed.")
+    
+    # Setup warehouse database
+    print("\nConnecting to postgres-dw (warehouse)...")
+    dw_conn = get_dw_db_connection()
+    print("Connected successfully")
+    
+    try:
+        print("\nCreating warehouse tables (staging and raw schemas)...")
+        create_warehouse_tables(dw_conn)
+        print("\nWarehouse database setup completed successfully!")
+        
+    except Exception as e:
+        print(f"\nError during warehouse setup: {e}")
+        dw_conn.rollback()
+        raise
+    finally:
+        dw_conn.close()
+        print("Warehouse database connection closed.\n")
 
 
 if __name__ == "__main__":
