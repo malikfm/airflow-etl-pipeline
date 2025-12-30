@@ -462,7 +462,6 @@ def generate_order_items(orders_df: pd.DataFrame, products_df: pd.DataFrame) -> 
     order_items = []
     
     # Create product lookup for created_at
-    products_df = products_df[products_df["created_at"] < pd.Timestamp.today()]
     product_created_at = products_df.set_index("id")["created_at"].to_dict()
     product_ids = list(product_created_at.keys())
 
