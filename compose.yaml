@@ -115,6 +115,10 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    environment:
+      <<: *airflow-common-env
+      AIRFLOW__API__EXPOSE_CONFIG: 'true'
+      AIRFLOW__LOGGING__FAB_LOGGING_LEVEL: 'INFO'
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -271,6 +275,7 @@ services:
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _AIRFLOW_WWW_USER_ROLE: Admin
       _PIP_ADDITIONAL_REQUIREMENTS: ''
     user: "0:0"
     networks:
