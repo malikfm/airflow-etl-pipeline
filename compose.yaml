@@ -21,11 +21,11 @@ x-airflow-common:
     SOURCE_DB_PASSWORD: ${SOURCE_DB_PASSWORD:-password}
     SOURCE_DB_NAME: ${SOURCE_DB_NAME:-source_db}
     # Data Warehouse Connection
-    DW_DB_HOST: ${DW_DB_HOST:-postgres-dw}
-    DW_DB_PORT: ${DW_DB_PORT:-5432}
-    DW_DB_USER: ${DW_DB_USER:-user}
-    DW_DB_PASSWORD: ${DW_DB_PASSWORD:-password}
-    DW_DB_NAME: ${DW_DB_NAME:-warehouse_db}
+    DWH_DB_HOST: ${DWH_DB_HOST:-postgres-dwh}
+    DWH_DB_PORT: ${DWH_DB_PORT:-5432}
+    DWH_DB_USER: ${DWH_DB_USER:-user}
+    DWH_DB_PASSWORD: ${DWH_DB_PASSWORD:-password}
+    DWH_DB_NAME: ${DWH_DB_NAME:-warehouse_db}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./data:/opt/airflow/data
@@ -47,9 +47,9 @@ services:
     image: postgres:17
     container_name: postgres-source
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: source_db
+      POSTGRES_USER: ${SOURCE_DB_USER:-user}
+      POSTGRES_PASSWORD: ${SOURCE_DB_PASSWORD:-password}
+      POSTGRES_DB: ${SOURCE_DB_NAME:-source_db}
     ports:
       - "5433:5432"
     volumes:
@@ -64,17 +64,17 @@ services:
     restart: unless-stopped
 
   # DWH Database
-  postgres-dw:
+  postgres-dwh:
     image: postgres:17
-    container_name: postgres-dw
+    container_name: postgres-dwh
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: warehouse_db
+      POSTGRES_USER: ${DWH_DB_USER:-user}
+      POSTGRES_PASSWORD: ${DWH_DB_PASSWORD:-password}
+      POSTGRES_DB: ${DWH_DB_NAME:-warehouse_db}
     ports:
       - "5434:5432"
     volumes:
-      - postgres-dw-data:/var/lib/postgresql/data
+      - postgres-dwh-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "user", "-d", "warehouse_db"]
       interval: 10s
@@ -89,9 +89,9 @@ services:
     image: postgres:17
     container_name: postgres-airflow
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
+      POSTGRES_USER: ${AIRFLOW_DB_USER:-airflow}
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow}
+      POSTGRES_DB: ${AIRFLOW_DB_NAME:-airflow}
     volumes:
       - postgres-airflow-data:/var/lib/postgresql/data
     healthcheck:
@@ -283,7 +283,7 @@ services:
 
 volumes:
   postgres-source-data:
-  postgres-dw-data:
+  postgres-dwh-data:
   postgres-airflow-data:
 
 networks:

@@ -16,13 +16,13 @@ def get_source_db_connection() -> connection:
     return conn
 
 
-def get_dw_db_connection() -> connection:
-    """Create connection to postgres-dw database."""
+def get_dwh_db_connection() -> connection:
+    """Create connection to postgres-dwh database."""
     conn = psycopg2.connect(
-        host=os.getenv("DW_DB_HOST", "localhost"),
-        port=int(os.getenv("DW_DB_PORT", "5434")),
-        database=os.getenv("DW_DB_NAME", "warehouse_db"),
-        user=os.getenv("DW_DB_USER", "user"),
-        password=os.getenv("DW_DB_PASSWORD", "password"),
+        host=os.getenv("DWH_DB_HOST", "localhost"),
+        port=int(os.getenv("DWH_DB_PORT", "5434")),
+        database=os.getenv("DWH_DB_NAME", "warehouse_db"),
+        user=os.getenv("DWH_DB_USER", "user"),
+        password=os.getenv("DWH_DB_PASSWORD", "password"),
     )
     return conn

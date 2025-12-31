@@ -28,14 +28,14 @@ def get_src_db_connection() -> connection:
     return conn
 
 
-def get_dw_db_connection() -> connection:
-    """Create connection to postgres-dw (warehouse) database."""
+def get_dwh_db_connection() -> connection:
+    """Create connection to postgres-dwh (warehouse) database."""
     conn = psycopg2.connect(
-        host=os.getenv("DW_DB_HOST", "localhost"),
-        port=os.getenv("DW_DB_PORT", "5434"),
-        database=os.getenv("DW_DB_NAME", "warehouse_db"),
-        user=os.getenv("DW_DB_USER", "user"),
-        password=os.getenv("DW_DB_PASSWORD", "password"),
+        host=os.getenv("DWH_DB_HOST", "localhost"),
+        port=os.getenv("DWH_DB_PORT", "5434"),
+        database=os.getenv("DWH_DB_NAME", "warehouse_db"),
+        user=os.getenv("DWH_DB_USER", "user"),
+        password=os.getenv("DWH_DB_PASSWORD", "password"),
     )
     return conn
 
@@ -601,7 +601,7 @@ def main():
     
     # Setup warehouse database
     print("\nConnecting to postgres-dw (warehouse)...")
-    dw_conn = get_dw_db_connection()
+    dw_conn = get_dwh_db_connection()
     print("Connected successfully")
     
     try:

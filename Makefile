@@ -51,7 +51,7 @@ shell-source:
 	@docker-compose exec postgres-source psql -U user -d source_db
 
 shell-dwh:
-	@docker-compose exec postgres-dw psql -U user -d warehouse_db
+	@docker-compose exec postgres-dwh psql -U user -d warehouse_db
 
 # Database Seeding
 

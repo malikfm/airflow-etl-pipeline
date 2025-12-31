@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine
 
-from scripts.utils.database import get_dw_db_connection
+from scripts.utils.database import get_dwh_db_connection
 from scripts.utils.file import check_file_exists
 
 SCHEMA_NAME = "raw_ingest"
@@ -40,7 +40,7 @@ def truncate_and_load(
     raw_ingest_table = f"{SCHEMA_NAME}.{table_name}"
     
     # Get database connection for truncate
-    conn = get_dw_db_connection()
+    conn = get_dwh_db_connection()
     
     try:
         with conn.cursor() as cur:
@@ -52,11 +52,11 @@ def truncate_and_load(
     
     # Load data using pandas to_sql with append
     engine = create_engine(
-        f"postgresql://{os.getenv('DW_DB_USER', 'user')}:"
-        f"{os.getenv('DW_DB_PASSWORD', 'password')}@"
-        f"{os.getenv('DW_DB_HOST', 'localhost')}:"
-        f"{os.getenv('DW_DB_PORT', '5434')}/"
-        f"{os.getenv('DW_DB_NAME', 'warehouse_db')}"
+        f"postgresql://{os.getenv('DWH_DB_USER', 'user')}:"
+        f"{os.getenv('DWH_DB_PASSWORD', 'password')}@"
+        f"{os.getenv('DWH_DB_HOST', 'localhost')}:"
+        f"{os.getenv('DWH_DB_PORT', '5434')}/"
+        f"{os.getenv('DWH_DB_NAME', 'warehouse_db')}"
     )
     
     df.to_sql(
