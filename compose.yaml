@@ -3,28 +3,29 @@ x-airflow-common:
   image: apache/airflow:3.1.5
   environment:
     &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW__API_AUTH__JWT_SECRET:-your_secret_key}
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
-    AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- dbt-postgres faker great-expectations pandas psycopg2-binary pyarrow pytest sqlalchemy}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- dbt-postgres==1.10.0 faker==39.0.0 great_expectations==1.10.0 pandas==2.3.3 psycopg2-binary==2.9.11 pyarrow==22.0.0 pytest==9.0.2 sqlalchemy==2.0.45}
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     # Source Database Connection
-    SOURCE_DB_HOST: postgres-source
-    SOURCE_DB_PORT: 5432
-    SOURCE_DB_USER: user
-    SOURCE_DB_PASSWORD: password
-    SOURCE_DB_NAME: source_db
+    SOURCE_DB_HOST: ${SOURCE_DB_HOST:-postgres-source}
+    SOURCE_DB_PORT: ${SOURCE_DB_PORT:-5432}
+    SOURCE_DB_USER: ${SOURCE_DB_USER:-user}
+    SOURCE_DB_PASSWORD: ${SOURCE_DB_PASSWORD:-password}
+    SOURCE_DB_NAME: ${SOURCE_DB_NAME:-source_db}
     # Data Warehouse Connection
-    DW_DB_HOST: postgres-dw
-    DW_DB_PORT: 5432
-    DW_DB_USER: user
-    DW_DB_PASSWORD: password
-    DW_DB_NAME: warehouse_db
+    DW_DB_HOST: ${DW_DB_HOST:-postgres-dw}
+    DW_DB_PORT: ${DW_DB_PORT:-5432}
+    DW_DB_USER: ${DW_DB_USER:-user}
+    DW_DB_PASSWORD: ${DW_DB_PASSWORD:-password}
+    DW_DB_NAME: ${DW_DB_NAME:-warehouse_db}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./data:/opt/airflow/data
@@ -103,9 +104,9 @@ services:
     restart: unless-stopped
 
   # Airflow API Server
-  airflow-api-server:
+  airflow-apiserver:
     <<: *airflow-common
-    container_name: airflow-api-server
+    container_name: airflow-apiserver
     command: api-server
     ports:
       - 8080:8080
@@ -118,7 +119,6 @@ services:
     environment:
       <<: *airflow-common-env
       AIRFLOW__API__EXPOSE_CONFIG: 'true'
-      AIRFLOW__LOGGING__FAB_LOGGING_LEVEL: 'INFO'
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -275,7 +275,7 @@ services:
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
-      _AIRFLOW_WWW_USER_ROLE: Admin
+      _AIRFLOW_WWW_USER_ROLE: ${_AIRFLOW_WWW_USER_ROLE:-Admin}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
     user: "0:0"
     networks:
