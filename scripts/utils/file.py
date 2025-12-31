@@ -1,9 +1,9 @@
 from pathlib import Path
 
 
-def check_file_exists(file_path: Path) -> bool:
+def check_file_exists(file_path: str | Path) -> bool:
     """Check if a file exists."""
-    return file_path.exists()
+    return Path(file_path).exists()
 
 
 def get_data_lake_path(table_name: str, execution_date: str) -> Path:
