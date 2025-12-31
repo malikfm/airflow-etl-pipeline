@@ -50,7 +50,7 @@ shell-airflow:
 shell-source:
 	@docker-compose exec postgres-source psql -U user -d source_db
 
-shell-dw:
+shell-dwh:
 	@docker-compose exec postgres-dw psql -U user -d warehouse_db
 
 # Database Seeding
