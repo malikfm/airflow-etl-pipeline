@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from scripts.utils.database import get_dw_db_connection
 from scripts.utils.file import check_file_exists
 
-SCHEMA_NAME = "staging"
+SCHEMA_NAME = "raw_ingest"
 
 
 def truncate_and_load(
@@ -15,13 +15,13 @@ def truncate_and_load(
     parquet_path: Path,
 ) -> int:
     """
-    Truncate staging table and load data from Parquet file.
+    Truncate raw_ingest table and load data from Parquet file.
     
-    This implements the truncate-insert pattern for staging tables.
-    Staging is temporary, dbt will handle history.
+    This implements the truncate-insert pattern for raw_ingest tables.
+    raw_ingest is temporary, dbt will handle history.
     
     Args:
-        table_name: Name of the staging table
+        table_name: Name of the raw_ingest table
         parquet_path: Path to Parquet file
         
     Returns:
@@ -37,7 +37,7 @@ def truncate_and_load(
         print(f"Warning: No data in {parquet_path}")
         return 0
 
-    staging_table = f"{SCHEMA_NAME}.{table_name}"
+    raw_ingest_table = f"{SCHEMA_NAME}.{table_name}"
     
     # Get database connection for truncate
     conn = get_dw_db_connection()
@@ -45,7 +45,7 @@ def truncate_and_load(
     try:
         with conn.cursor() as cur:
             # Truncate table (preserves structure and data types)
-            cur.execute(f"TRUNCATE TABLE {staging_table}")
+            cur.execute(f"TRUNCATE TABLE {raw_ingest_table}")
         conn.commit()
     finally:
         conn.close()
@@ -69,6 +69,6 @@ def truncate_and_load(
     )
     
     row_count = len(df)
-    print(f"Loaded {row_count} rows into {staging_table}")
+    print(f"Loaded {row_count} rows into {raw_ingest_table}")
     
     return row_count

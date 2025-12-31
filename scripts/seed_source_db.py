@@ -110,28 +110,28 @@ def create_warehouse_tables(conn: connection) -> None:
     """
     with conn.cursor() as cur:
         # Create schemas
-        cur.execute("CREATE SCHEMA IF NOT EXISTS staging")
-        cur.execute("CREATE SCHEMA IF NOT EXISTS raw")
+        cur.execute("CREATE SCHEMA IF NOT EXISTS raw_ingest")
+        cur.execute("CREATE SCHEMA IF NOT EXISTS raw_current")
         
-        # Drop existing tables in staging
+        # Drop existing tables in raw_ingest
         cur.execute("""
-            DROP TABLE IF EXISTS staging.order_items CASCADE;
-            DROP TABLE IF EXISTS staging.orders CASCADE;
-            DROP TABLE IF EXISTS staging.products CASCADE;
-            DROP TABLE IF EXISTS staging.users CASCADE;
+            DROP TABLE IF EXISTS raw_ingest.order_items CASCADE;
+            DROP TABLE IF EXISTS raw_ingest.orders CASCADE;
+            DROP TABLE IF EXISTS raw_ingest.products CASCADE;
+            DROP TABLE IF EXISTS raw_ingest.users CASCADE;
         """)
         
-        # Drop existing tables in raw
+        # Drop existing tables in raw_current
         cur.execute("""
-            DROP TABLE IF EXISTS raw.order_items CASCADE;
-            DROP TABLE IF EXISTS raw.orders CASCADE;
-            DROP TABLE IF EXISTS raw.products CASCADE;
-            DROP TABLE IF EXISTS raw.users CASCADE;
+            DROP TABLE IF EXISTS raw_current.order_items CASCADE;
+            DROP TABLE IF EXISTS raw_current.orders CASCADE;
+            DROP TABLE IF EXISTS raw_current.products CASCADE;
+            DROP TABLE IF EXISTS raw_current.users CASCADE;
         """)
         
-        # Create staging tables (no constraints, no defaults)
+        # Create raw_ingest tables (no constraints, no defaults)
         cur.execute("""
-            CREATE TABLE staging.users (
+            CREATE TABLE raw_ingest.users (
                 id INTEGER,
                 name VARCHAR(255),
                 email VARCHAR(255),
@@ -143,7 +143,7 @@ def create_warehouse_tables(conn: connection) -> None:
         """)
         
         cur.execute("""
-            CREATE TABLE staging.products (
+            CREATE TABLE raw_ingest.products (
                 id INTEGER,
                 name VARCHAR(255),
                 category VARCHAR(100),
@@ -155,7 +155,7 @@ def create_warehouse_tables(conn: connection) -> None:
         """)
         
         cur.execute("""
-            CREATE TABLE staging.orders (
+            CREATE TABLE raw_ingest.orders (
                 id INTEGER,
                 user_id INTEGER,
                 status VARCHAR(50),
@@ -165,7 +165,7 @@ def create_warehouse_tables(conn: connection) -> None:
         """)
         
         cur.execute("""
-            CREATE TABLE staging.order_items (
+            CREATE TABLE raw_ingest.order_items (
                 id INTEGER,
                 order_id INTEGER,
                 product_id INTEGER,
@@ -173,9 +173,9 @@ def create_warehouse_tables(conn: connection) -> None:
             );
         """)
         
-        # Create raw tables (same structure as staging)
+        # Create raw_current tables (same structure as raw_ingest)
         cur.execute("""
-            CREATE TABLE raw.users (
+            CREATE TABLE raw_current.users (
                 id INTEGER,
                 name VARCHAR(255),
                 email VARCHAR(255),
@@ -187,7 +187,7 @@ def create_warehouse_tables(conn: connection) -> None:
         """)
         
         cur.execute("""
-            CREATE TABLE raw.products (
+            CREATE TABLE raw_current.products (
                 id INTEGER,
                 name VARCHAR(255),
                 category VARCHAR(100),
@@ -199,7 +199,7 @@ def create_warehouse_tables(conn: connection) -> None:
         """)
         
         cur.execute("""
-            CREATE TABLE raw.orders (
+            CREATE TABLE raw_current.orders (
                 id INTEGER,
                 user_id INTEGER,
                 status VARCHAR(50),
@@ -209,7 +209,7 @@ def create_warehouse_tables(conn: connection) -> None:
         """)
         
         cur.execute("""
-            CREATE TABLE raw.order_items (
+            CREATE TABLE raw_current.order_items (
                 id INTEGER,
                 order_id INTEGER,
                 product_id INTEGER,

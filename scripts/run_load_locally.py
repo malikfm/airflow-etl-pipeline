@@ -6,13 +6,13 @@ from scripts.core.loader import truncate_and_load
 from scripts.utils.file import check_file_exists, get_data_lake_path
 
 
-def load_all_to_staging(execution_date: str) -> None:
-    """Load all data from data lake to staging tables.
+def load_all(execution_date: str) -> None:
+    """Load all data from data lake to raw_ingest tables.
     
     Args:
         execution_date: Date in YYYY-MM-DD format
     """
-    print(f"\nLoading data to staging for {execution_date}")
+    print(f"\nLoading data to raw_ingest for {execution_date}")
     
     # Load orders
     print("\n1. Loading orders...")
@@ -72,7 +72,7 @@ def main():
         print(f"Error: Invalid date format '{execution_date}'. Use YYYY-MM-DD.")
         return 1
     
-    load_all_to_staging(execution_date)
+    load_all(execution_date)
 
 
 if __name__ == "__main__":
