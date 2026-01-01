@@ -166,6 +166,8 @@ with DAG(
                 task_display_name=f"Load \"{child_table['name']}\" to raw_ingest"
             )(child_table['name'])
 
+            # Parent dependencies
+            branch >> parent_data_quality_validation_task >> parent_load_task >> end
             # Child dependencies
             parent_load_task >> child_extraction_task >> child_data_quality_validation_task >> child_load_task >> end
     else:
