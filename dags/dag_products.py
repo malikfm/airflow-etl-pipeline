@@ -143,7 +143,6 @@ with DAG(
     
     # Set task dependencies
     start >> parent_extraction_task >> branch
-    branch >> parent_data_quality_validation_task >> parent_load_task
 
     if CHILD_TABLES:
         # Child Tasks
@@ -165,5 +164,7 @@ with DAG(
 
             # Child dependencies
             parent_load_task >> child_extraction_task >> child_data_quality_validation_task >> child_load_task >> end
+    else:
+        branch >> parent_data_quality_validation_task >> parent_load_task >> end
     
     branch >> end
