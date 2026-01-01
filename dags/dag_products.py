@@ -108,13 +108,14 @@ with DAG(
 
     @task
     def load(table_name: str, **kwargs):
-        """Load validated data from data lake to staging tables."""
+        """Load validated data from data lake to raw_ingest tables."""
         execution_date = kwargs["ds"]
+        batch_id = execution_date.replace("-", "")
         
-        print(f"Loading {table_name} to staging for {execution_date}")
+        print(f"Loading {table_name} to raw_ingest for {execution_date}")
         
         file_path = get_data_lake_path(table_name, execution_date)
-        truncate_and_load(table_name, file_path)
+        truncate_and_load(table_name, file_path, batch_id)
 
 
     # Start and end tasks
@@ -136,8 +137,8 @@ with DAG(
     )(PARENT_TABLE['name'])
     
     parent_load_task = load.override(
-        task_id=f"load_{PARENT_TABLE['name']}_to_staging",
-        task_display_name=f"Load \"{PARENT_TABLE['name']}\" to staging"
+        task_id=f"load_{PARENT_TABLE['name']}_to_raw_ingest",
+        task_display_name=f"Load \"{PARENT_TABLE['name']}\" to raw_ingest"
     )(PARENT_TABLE['name'])
     
     # Set task dependencies
@@ -158,8 +159,8 @@ with DAG(
             )(child_table['name'])
 
             child_load_task = load.override(
-                task_id=f"load_{child_table['name']}_to_staging",
-                task_display_name=f"Load \"{child_table['name']}\" to staging"
+                task_id=f"load_{child_table['name']}_to_raw_ingest",
+                task_display_name=f"Load \"{child_table['name']}\" to raw_ingest"
             )(child_table['name'])
 
             # Child dependencies

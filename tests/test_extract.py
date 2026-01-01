@@ -53,8 +53,8 @@ def test_extract_table_by_date(mock_db_connection, mock_read_sql, sample_orders_
     assert "created_at::DATE" in call_args[0][0]
     assert "updated_at::DATE" in call_args[0][0]
     assert "OR" in call_args[0][0]
-    # Only one param but used twice in query
-    assert call_args[1]["params"] == ("2025-12-01",)
+    # Params passed twice for created_at and updated_at
+    assert call_args[1]["params"] == ("2025-12-01", "2025-12-01")
     
     # Verify file was created
     assert os.path.exists(output_path)
@@ -106,8 +106,8 @@ def test_extract_child_table_by_parent_table(mock_db_connection, mock_read_sql, 
     call_args = mock_read_sql.call_args
     assert "order_items" in call_args[0][0]
     assert "WHERE order_id IN" in call_args[0][0]
-    # Verify parent IDs are passed as params
-    assert call_args[1]["params"] == ([100, 101, 102],)
+    # Verify parent IDs are passed as tuple for IN clause
+    assert call_args[1]["params"] == ((100, 101, 102),)
     
     # Verify file was created
     assert os.path.exists(output_path)

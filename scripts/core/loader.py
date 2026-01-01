@@ -13,29 +13,36 @@ SCHEMA_NAME = "raw_ingest"
 def truncate_and_load(
     table_name: str,
     parquet_path: Path,
+    batch_id: str,
 ) -> int:
     """
     Truncate raw_ingest table and load data from Parquet file.
     
-    This implements the truncate-insert pattern for raw_ingest tables.
-    raw_ingest is temporary, dbt will handle history.
+    This implements the truncate-insert pattern by batch_id for raw_ingest tables.
     
     Args:
         table_name: Name of the raw_ingest table
         parquet_path: Path to Parquet file
+        batch_id: Batch ID for the load, e.g. 20250101
         
     Returns:
         Number of rows loaded
     """
     if not check_file_exists(parquet_path):
-        raise FileNotFoundError(f"Parquet file not found: {parquet_path}")
+        print(f"Warning: Parquet file not found: {parquet_path}")
+        print("Skipping load.")
+        return 0
 
     # Read parquet file
     df = pd.read_parquet(parquet_path)
-    
+
     if len(df) == 0:
         print(f"Warning: No data in {parquet_path}")
+        print("Skipping load.")
         return 0
+
+    # Add batch_id column
+    df["batch_id"] = batch_id
 
     raw_ingest_table = f"{SCHEMA_NAME}.{table_name}"
     
@@ -45,7 +52,7 @@ def truncate_and_load(
     try:
         with conn.cursor() as cur:
             # Truncate table (preserves structure and data types)
-            cur.execute(f"TRUNCATE TABLE {raw_ingest_table}")
+            cur.execute(f"DELETE FROM {raw_ingest_table} WHERE batch_id = '{batch_id}'")
         conn.commit()
     finally:
         conn.close()

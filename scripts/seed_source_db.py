@@ -132,6 +132,7 @@ def create_warehouse_tables(conn: connection) -> None:
         # Create raw_ingest tables (no constraints, no defaults)
         cur.execute("""
             CREATE TABLE raw_ingest.users (
+                batch_id CHAR(8),
                 id INTEGER,
                 name VARCHAR(255),
                 email VARCHAR(255),
@@ -144,6 +145,7 @@ def create_warehouse_tables(conn: connection) -> None:
         
         cur.execute("""
             CREATE TABLE raw_ingest.products (
+                batch_id CHAR(8),
                 id INTEGER,
                 name VARCHAR(255),
                 category VARCHAR(100),
@@ -156,6 +158,7 @@ def create_warehouse_tables(conn: connection) -> None:
         
         cur.execute("""
             CREATE TABLE raw_ingest.orders (
+                batch_id CHAR(8),
                 id INTEGER,
                 user_id INTEGER,
                 status VARCHAR(50),
@@ -166,6 +169,7 @@ def create_warehouse_tables(conn: connection) -> None:
         
         cur.execute("""
             CREATE TABLE raw_ingest.order_items (
+                batch_id CHAR(8),
                 id INTEGER,
                 order_id INTEGER,
                 product_id INTEGER,

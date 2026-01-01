@@ -1,17 +1,20 @@
 sources:
-  - name: staging
-    description: Staging tables loaded from data lake
+  - name: raw_ingest
+    description: Raw ingestion tables loaded from data lake with batch_id
     database: warehouse_db
-    schema: staging
+    schema: raw_ingest
     tables:
       - name: users
-        description: User profile
+        description: User profile snapshots by batch
         columns:
+          - name: batch_id
+            description: Batch ID (YYYYMMDD format)
+            data_tests:
+              - not_null
           - name: id
             description: User ID
             data_tests:
               - not_null
-              - unique
           - name: name
             description: User name
             data_tests:
@@ -20,7 +23,6 @@ sources:
             description: User email
             data_tests:
               - not_null
-              - unique
           - name: address
             description: User address
             data_tests:
@@ -37,18 +39,20 @@ sources:
             description: Deletion timestamp
 
       - name: products
-        description: Product catalog
+        description: Product catalog snapshots by batch
         columns:
+          - name: batch_id
+            description: Batch ID (YYYYMMDD format)
+            data_tests:
+              - not_null
           - name: id
             description: Product ID
             data_tests:
               - not_null
-              - unique
           - name: name
             description: Product name
             data_tests:
               - not_null
-              - unique
           - name: category
             description: Product category
             data_tests:
@@ -69,13 +73,16 @@ sources:
             description: Deletion timestamp
 
       - name: orders
-        description: Orders
+        description: Order snapshots by batch
         columns:
+          - name: batch_id
+            description: Batch ID (YYYYMMDD format)
+            data_tests:
+              - not_null
           - name: id
             description: Order ID
             data_tests:
               - not_null
-              - unique
           - name: user_id
             description: User who placed the order
             data_tests:
@@ -85,7 +92,7 @@ sources:
             data_tests:
               - not_null
               - accepted_values:
-                  values: ['pending', 'shipped', 'delivered', 'cancelled']
+                  values: ['pending', 'shipped', 'completed', 'cancelled']
           - name: created_at
             description: Creation timestamp
             data_tests:
@@ -96,13 +103,16 @@ sources:
               - not_null
 
       - name: order_items
-        description: Items in orders
+        description: Order item snapshots by batch
         columns:
+          - name: batch_id
+            description: Batch ID (YYYYMMDD format)
+            data_tests:
+              - not_null
           - name: id
             description: Order item ID
             data_tests:
               - not_null
-              - unique
           - name: order_id
             description: Reference to order
             data_tests:

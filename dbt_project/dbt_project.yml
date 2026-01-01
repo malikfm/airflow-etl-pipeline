@@ -13,11 +13,10 @@ clean-targets:
 
 models:
   ecommerce_dw:    
-    # Raw (incremental from staging)
-    raw:
-      +materialized: incremental
-      +on_schema_change: "append_new_columns"
-      +schema: raw
+    # Raw Current (deduplicated latest state from raw_ingest)
+    raw_current:
+      +materialized: table
+      +schema: raw_current
       +unique_key: id
     
     # Warehouse (facts and dimensions)

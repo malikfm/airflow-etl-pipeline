@@ -13,7 +13,7 @@ _orders as (
         status,
         created_at,
         updated_at
-    from {{ ref('raw', 'orders') }}, date_info
+    from {{ ref('raw_current', 'orders') }}, date_info
     {% if is_incremental() %}
     where updated_at > date_info.date
     {% endif %}
@@ -45,9 +45,9 @@ daily_order_status as (
 daily_gmv as (
     select
         sum(oi.quantity * p.price) as daily_gmv
-    from {{ ref('raw', 'order_items') }} oi
+    from {{ ref('raw_current', 'order_items') }} oi
     join completed_orders co on oi.order_id = co.id
-    join {{ ref('raw', 'products') }} p on oi.product_id = p.id
+    join {{ ref('raw_current', 'products') }} p on oi.product_id = p.id
 ),
 
 prev_total as (

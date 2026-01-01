@@ -1,6 +1,6 @@
 models:
   - name: users
-    description: User profile
+    description: User profile (latest state from raw_ingest)
     columns:
       - name: id
         description: User ID
@@ -32,7 +32,7 @@ models:
         description: Deletion timestamp
 
   - name: products
-    description: Product catalog
+    description: Product catalog (latest state from raw_ingest)
     columns:
       - name: id
         description: Product ID
@@ -64,7 +64,7 @@ models:
         description: Deletion timestamp
 
   - name: orders
-    description: Orders
+    description: Orders (latest state from raw_ingest)
     columns:
       - name: id
         description: Order ID
@@ -80,7 +80,7 @@ models:
         data_tests:
           - not_null
           - accepted_values:
-              values: ['pending', 'shipped', 'delivered', 'cancelled']
+              values: ['pending', 'shipped', 'completed', 'cancelled']
       - name: created_at
         description: Creation timestamp
         data_tests:
@@ -91,7 +91,7 @@ models:
           - not_null
 
   - name: order_items
-    description: Items in orders
+    description: Items in orders (latest state from raw_ingest)
     columns:
       - name: id
         description: Order item ID

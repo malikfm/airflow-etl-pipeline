@@ -13,12 +13,13 @@ def load_all(execution_date: str) -> None:
         execution_date: Date in YYYY-MM-DD format
     """
     print(f"\nLoading data to raw_ingest for {execution_date}")
+    batch_id = execution_date.replace("-", "")
     
     # Load orders
     print("\n1. Loading orders...")
     orders_path = get_data_lake_path("orders", execution_date)
     if check_file_exists(orders_path):
-        orders_count = truncate_and_load("orders", orders_path)
+        orders_count = truncate_and_load("orders", orders_path, batch_id)
         print(f"Loaded {orders_count} orders")
     else:
         print(f"No data found for orders for {execution_date}. Skipping load.")
@@ -28,7 +29,7 @@ def load_all(execution_date: str) -> None:
     print("\n2. Loading order items...")
     order_items_path = get_data_lake_path("order_items", execution_date)
     if check_file_exists(order_items_path):
-        order_items_count = truncate_and_load("order_items", order_items_path)
+        order_items_count = truncate_and_load("order_items", order_items_path, batch_id)
         print(f"Loaded {order_items_count} order items")
     else:
         print(f"No data found for order items for {execution_date}. Skipping load.")
@@ -38,7 +39,7 @@ def load_all(execution_date: str) -> None:
     print("\n3. Loading users...")
     users_path = get_data_lake_path("users", execution_date)
     if check_file_exists(users_path):
-        users_count = truncate_and_load("users", users_path)
+        users_count = truncate_and_load("users", users_path, batch_id)
         print(f"Loaded {users_count} users")
     else:
         print(f"No data found for users for {execution_date}. Skipping load.")
@@ -48,7 +49,7 @@ def load_all(execution_date: str) -> None:
     print("\n4. Loading products...")
     products_path = get_data_lake_path("products", execution_date)
     if check_file_exists(products_path):
-        products_count = truncate_and_load("products", products_path)
+        products_count = truncate_and_load("products", products_path, batch_id)
         print(f"Loaded {products_count} products")
     else:
         print(f"No data found for products for {execution_date}. Skipping load.")
