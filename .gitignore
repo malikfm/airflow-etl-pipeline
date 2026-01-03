@@ -160,42 +160,24 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
-
 # PyPI configuration file
 .pypirc
 
-# Project-specific
+# Project Specific
 # Airflow
 logs/
-airflow.db
-airflow.cfg
-webserver_config.py
-standalone_admin_password.txt
 
 # Data Lake
-data/raw/
-data/processed/
-data/staging/
 *.parquet
 
 # Docker
 .dockerignore
 
-# Great Expectations
-include/uncommitted/
-include/validations/
-include/.ge_store_backend_id
-
 # dbt
 dbt_project/target/
 dbt_project/dbt_packages/
 dbt_project/logs/
+dbt_project/.user.yml
 
 # IDE
 .vscode/
@@ -207,3 +189,6 @@ dbt_project/logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Others
+TRD.md

@@ -31,9 +31,7 @@ x-airflow-common:
     - ./data:/opt/airflow/data
     - ./dbt_project:/opt/airflow/dbt_project
     - ./scripts:/opt/airflow/scripts
-    - ./include:/opt/airflow/include
     - ./logs:/opt/airflow/logs
-    - ./plugins:/opt/airflow/plugins
     - ./tests:/opt/airflow/tests
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
