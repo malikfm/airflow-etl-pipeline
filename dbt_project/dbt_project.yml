@@ -15,7 +15,8 @@ models:
   ecommerce_dw:    
     # Raw Current (deduplicated latest state from raw_ingest)
     raw_current:
-      +materialized: table
+      +materialized: incremental
+      +on_schema_change: "append_new_columns"
       +schema: raw_current
       +unique_key: id
     

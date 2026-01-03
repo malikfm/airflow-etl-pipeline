@@ -1,4 +1,21 @@
--- Get latest state for each user by taking the most recent batch_id
+-- Process specific date
+{% set execution_date = var('execution_date') %}
+{% if is_incremental() %}
+
+select
+    id,
+    name,
+    email,
+    address,
+    created_at,
+    updated_at,
+    deleted_at
+from {{ source('raw_ingest', 'users') }}
+where batch_id::date = '{{ execution_date }}'
+
+-- Full refresh, get latest state for each item by taking the most recent batch_id
+{% else %}
+
 with ranked as (
     select
         id,
@@ -11,7 +28,6 @@ with ranked as (
         row_number() over (partition by id order by batch_id desc) as rn
     from {{ source('raw_ingest', 'users') }}
 )
-
 select
     id,
     name,
@@ -22,3 +38,5 @@ select
     deleted_at
 from ranked
 where rn = 1
+
+{% endif %}

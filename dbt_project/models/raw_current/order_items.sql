@@ -1,4 +1,18 @@
--- Get latest state for each order item by taking the most recent batch_id
+-- Process specific date
+{% set execution_date = var('execution_date') %}
+{% if is_incremental() %}
+
+select
+    id,
+    order_id,
+    product_id,
+    quantity
+from {{ source('raw_ingest', 'order_items') }}
+where batch_id::date = '{{ execution_date }}'
+
+-- Full refresh, get latest state for each item by taking the most recent batch_id
+{% else %}
+
 with ranked as (
     select
         id,
@@ -8,7 +22,6 @@ with ranked as (
         row_number() over (partition by id order by batch_id desc) as rn
     from {{ source('raw_ingest', 'order_items') }}
 )
-
 select
     id,
     order_id,
@@ -16,3 +29,5 @@ select
     quantity
 from ranked
 where rn = 1
+
+{% endif %}

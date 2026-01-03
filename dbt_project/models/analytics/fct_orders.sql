@@ -6,7 +6,7 @@ with _orders as (
         user_id,
         created_at,
         updated_at
-    from {{ ref('raw_current', 'orders') }}
+    from {{ ref('orders') }}
     {% if is_incremental() %}
     where updated_at > (select coalesce(max(updated_at), '1970-01-01') from {{ this }})
     {% endif %}
@@ -17,7 +17,7 @@ _order_items as (
         oi.order_id,
         oi.product_id,
         oi.quantity
-    from {{ ref('raw_current', 'order_items') }} oi
+    from {{ ref('order_items') }} oi
     join _orders o on oi.order_id = o.id
 ),
 
@@ -27,9 +27,9 @@ order_agg as (
         sum(oi.quantity * p.price) as order_total,
         count(*) as order_item_count
     from _order_items oi
-    join {{ ref('raw_current', 'products') }} p on oi.product_id = p.id
+    join {{ ref('products') }} p on oi.product_id = p.id
     group by oi.order_id
-),
+)
 
 select
     oa.order_id,

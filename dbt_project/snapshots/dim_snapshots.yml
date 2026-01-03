@@ -1,6 +1,7 @@
 snapshots:
   - name: dim_users
     description: Users dimension table, implements SCD Type 2.
+    relation: ref('users')
     columns:
       - name: id
         description: User ID
@@ -31,6 +32,7 @@ snapshots:
   
   - name: dim_products
     description: Products dimension table, implements SCD Type 2.
+    relation: ref('products')
     columns:
       - name: id
         description: Product ID
@@ -61,9 +63,14 @@ snapshots:
 
   - name: dim_orders
     description: Orders dimension table, implements SCD Type 2.
+    relation: ref('orders')
     columns:
       - name: id
         description: Order ID
+        data_tests:
+          - not_null
+      - name: user_id
+        description: User who placed the order
         data_tests:
           - not_null
       - name: status
@@ -71,7 +78,7 @@ snapshots:
         data_tests:
           - not_null
           - accepted_values:
-              values: ['pending', 'shipped', 'delivered', 'cancelled']
+              values: ['pending', 'shipped', 'completed', 'cancelled']
       - name: created_at
         description: Creation timestamp
         data_tests:
