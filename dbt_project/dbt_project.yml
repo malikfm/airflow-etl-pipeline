@@ -20,15 +20,13 @@ models:
       +schema: raw_current
       +unique_key: id
     
-    # Warehouse (facts and dimensions)
-    analytics:
+    # Facts tables
+    facts:
       +materialized: incremental
       +on_schema_change: "append_new_columns"
       +schema: analytics
 
 snapshots:
   ecommerce_dw:
-    +schema: analytics
-    +strategy: timestamp
-    +unique_key: id
-    +updated_at: updated_at
+    dimensions:
+      +schema: analytics

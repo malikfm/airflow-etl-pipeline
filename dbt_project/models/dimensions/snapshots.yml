@@ -2,6 +2,10 @@ snapshots:
   - name: dim_users
     description: Users dimension table, implements SCD Type 2.
     relation: ref('users')
+    config:
+      unique_key: id
+      strategy: timestamp
+      updated_at: updated_at
     columns:
       - name: id
         description: User ID
@@ -33,6 +37,10 @@ snapshots:
   - name: dim_products
     description: Products dimension table, implements SCD Type 2.
     relation: ref('products')
+    config:
+      unique_key: id
+      strategy: timestamp
+      updated_at: updated_at
     columns:
       - name: id
         description: Product ID
@@ -64,6 +72,10 @@ snapshots:
   - name: dim_orders
     description: Orders dimension table, implements SCD Type 2.
     relation: ref('orders')
+    config:
+      unique_key: id
+      strategy: timestamp
+      updated_at: updated_at
     columns:
       - name: id
         description: Order ID
