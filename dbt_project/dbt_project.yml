@@ -28,7 +28,7 @@ models:
 
 snapshots:
   ecommerce_dw:
-    +target_schema: analytics
+    +schema: analytics
     +strategy: timestamp
     +unique_key: id
     +updated_at: updated_at
