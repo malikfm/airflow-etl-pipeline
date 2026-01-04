@@ -107,7 +107,7 @@ with DAG(
     dbt_daily_build = BashOperator(
         task_id="dbt_daily_build",
         task_display_name="dbt build: daily",
-        bash_command=f"cd {DBT_PROJECT_DIR} && dbt build" + " --vars '{\"snapshot_date\": \"{{ yesterday_ds }}\"}'",
+        bash_command=f"cd {DBT_PROJECT_DIR} && dbt build" + " --vars '{\"snapshot_date\": \"{{ (logical_date - macros.timedelta(days=1)) | ds }}\"}'",
     )
 
     base_backfill_cmd = f"cd {DBT_PROJECT_DIR} && dbt build --select {dag.params['models']}"
@@ -115,13 +115,13 @@ with DAG(
         dbt_backfill_build = BashOperator(
             task_id="dbt_backfill_build",
             task_display_name="dbt build: backfill",
-            bash_command=base_backfill_cmd + " --vars '{\"snapshot_date\": \"{{ yesterday_ds }}\"}' --full-refresh",
+            bash_command=base_backfill_cmd + " --vars '{\"snapshot_date\": \"{{ (logical_date - macros.timedelta(days=1)) | ds }}\"}' --full-refresh",
         )
     else:
         dbt_backfill_build = BashOperator(
             task_id="dbt_backfill_build",
             task_display_name="dbt build: backfill",
-            bash_command=base_backfill_cmd + " --vars '{\"snapshot_date\": \"{{ yesterday_ds }}\"}'",
+            bash_command=base_backfill_cmd + " --vars '{\"snapshot_date\": \"{{ (logical_date - macros.timedelta(days=1)) | ds }}\"}'",
         )   
 
     # Branch: check if backfill mode

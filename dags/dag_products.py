@@ -33,6 +33,12 @@ CHILD_TABLES = [
     # }
 ]
 
+
+def subtract_one_day(logical_date: pendulum.DateTime):
+    yesterday_date = logical_date.subtract(days=1)
+    return yesterday_date.to_date_string()
+
+
 with DAG(
     dag_id="ingest_products",
     default_args=default_args,
@@ -47,8 +53,8 @@ with DAG(
     @task
     def extract_parent(table_name: str, **kwargs):
         """Extract parent table from source DB to data lake."""
-        execution_date = kwargs["yesterday_ds"]
-        extract_table_by_date(table_name, execution_date)
+        snapshot_date = subtract_one_day(kwargs["logical_date"])
+        extract_table_by_date(table_name, snapshot_date)
     
 
     @task
@@ -60,27 +66,27 @@ with DAG(
         **kwargs
     ):
         """Extract child table from source DB to data lake."""
-        execution_date = kwargs["yesterday_ds"]
+        snapshot_date = subtract_one_day(kwargs["logical_date"])
         extract_child_table_by_parent_table(
             parent_table_name,
             child_table_name,
             primary_key_in_parent,
             foreign_key_in_child,
-            execution_date
+            snapshot_date
         )
 
 
     @task.branch(task_display_name="Any data for this date?")
     def validate_data_exists(table_name: str, **kwargs):
         """Check if a file exists."""
-        execution_date = kwargs["yesterday_ds"]
+        snapshot_date = subtract_one_day(kwargs["logical_date"])
         
-        file_path = get_data_lake_path(table_name, execution_date)
+        file_path = get_data_lake_path(table_name, snapshot_date)
         if not check_file_exists(file_path):
-            print(f"No data for {execution_date}")
+            print(f"No data for {snapshot_date}")
             return "end"
         
-        print(f"Data for {execution_date} exists")
+        print(f"Data for {snapshot_date} exists")
         return f"validate_data_quality_{table_name}"
 
 
@@ -91,12 +97,12 @@ with DAG(
         This implements the circuit breaker pattern if validation fails,
         the task will fail and stop the pipeline.
         """
-        execution_date = kwargs["yesterday_ds"]
+        snapshot_date = subtract_one_day(kwargs["logical_date"])
         validator = DataQualityValidator()
 
-        print(f"Validating {table_name} data quality for {execution_date}")
+        print(f"Validating {table_name} data quality for {snapshot_date}")
 
-        file_path = get_data_lake_path(table_name, execution_date)
+        file_path = get_data_lake_path(table_name, snapshot_date)
         result = validator.validate_parquet_file(table_name, file_path)
 
         if result["success"]:
@@ -109,12 +115,12 @@ with DAG(
     @task
     def load(table_name: str, **kwargs):
         """Load validated data from data lake to raw_ingest tables."""
-        execution_date = kwargs["yesterday_ds"]
-        batch_id = execution_date.replace("-", "")
+        snapshot_date = subtract_one_day(kwargs["logical_date"])
+        batch_id = snapshot_date.replace("-", "")
         
-        print(f"Loading {table_name} to raw_ingest for {execution_date}")
+        print(f"Loading {table_name} to raw_ingest for {snapshot_date}")
         
-        file_path = get_data_lake_path(table_name, execution_date)
+        file_path = get_data_lake_path(table_name, snapshot_date)
         truncate_and_load(table_name, file_path, batch_id)
 
 
