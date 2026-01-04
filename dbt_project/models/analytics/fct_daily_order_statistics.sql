@@ -77,7 +77,7 @@ prev_total as (
         total_cancelled_orders,
         total_orders,
         total_gmv
-    from {{ this }}
+    from {{ this }}, date_info
     where date = date_info.prev_date  -- GTE yesterday 00:00:00
 
     -- First run only (non-incremental)

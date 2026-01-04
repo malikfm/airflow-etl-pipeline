@@ -8,6 +8,6 @@ ecommerce_dw:
       user: "{{ env_var('DWH_DB_USER', 'user') }}"
       password: "{{ env_var('DWH_DB_PASSWORD', 'password') }}"
       dbname: "{{ env_var('DWH_DB_NAME', 'warehouse_db') }}"
-      schema: ""
+      schema: public
       threads: 4
       keepalives_idle: 0
