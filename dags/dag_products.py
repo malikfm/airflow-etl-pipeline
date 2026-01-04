@@ -47,7 +47,7 @@ with DAG(
     @task
     def extract_parent(table_name: str, **kwargs):
         """Extract parent table from source DB to data lake."""
-        execution_date = kwargs["ds"]
+        execution_date = kwargs["yesterday_ds"]
         extract_table_by_date(table_name, execution_date)
     
 
@@ -60,7 +60,7 @@ with DAG(
         **kwargs
     ):
         """Extract child table from source DB to data lake."""
-        execution_date = kwargs["ds"]
+        execution_date = kwargs["yesterday_ds"]
         extract_child_table_by_parent_table(
             parent_table_name,
             child_table_name,
@@ -73,7 +73,7 @@ with DAG(
     @task.branch(task_display_name="Any data for this date?")
     def validate_data_exists(table_name: str, **kwargs):
         """Check if a file exists."""
-        execution_date = kwargs["ds"]
+        execution_date = kwargs["yesterday_ds"]
         
         file_path = get_data_lake_path(table_name, execution_date)
         if not check_file_exists(file_path):
@@ -91,7 +91,7 @@ with DAG(
         This implements the circuit breaker pattern if validation fails,
         the task will fail and stop the pipeline.
         """
-        execution_date = kwargs["ds"]
+        execution_date = kwargs["yesterday_ds"]
         validator = DataQualityValidator()
 
         print(f"Validating {table_name} data quality for {execution_date}")
@@ -109,7 +109,7 @@ with DAG(
     @task
     def load(table_name: str, **kwargs):
         """Load validated data from data lake to raw_ingest tables."""
-        execution_date = kwargs["ds"]
+        execution_date = kwargs["yesterday_ds"]
         batch_id = execution_date.replace("-", "")
         
         print(f"Loading {table_name} to raw_ingest for {execution_date}")

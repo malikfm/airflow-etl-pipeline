@@ -1,10 +1,10 @@
 {{ config(unique_key='date') }}
 
-{% set execution_date = var('execution_date') %}
+{% set snapshot_date = var('snapshot_date') %}
 with date_info as (
     select
-        '{{ execution_date }}'::date as cur_date,
-        '{{ execution_date }}'::date - interval '1 day' as prev_date
+        '{{ snapshot_date }}'::date as cur_date,
+        '{{ snapshot_date }}'::date - interval '1 day' as prev_date
 ),
 
 _orders as (

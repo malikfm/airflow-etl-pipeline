@@ -1,5 +1,5 @@
 -- Process specific date
-{% set execution_date = var('execution_date') %}
+{% set snapshot_date = var('snapshot_date') %}
 {% if is_incremental() %}
 
 select
@@ -9,7 +9,7 @@ select
     created_at,
     updated_at
 from {{ source('raw_ingest', 'orders') }}
-where batch_id::date = '{{ execution_date }}'
+where batch_id::date = '{{ snapshot_date }}'
 
 -- Full refresh, get latest state for each item by taking the most recent batch_id
 {% else %}
