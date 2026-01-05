@@ -6,7 +6,7 @@ from airflow.models import Param
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.standard.sensors.external_task import ExternalTaskSensor
-from airflow.sdk import DAG, task, TriggerRule
+from airflow.sdk import DAG, get_current_context, task, TriggerRule
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -40,10 +40,10 @@ with DAG(
             type="boolean",
             description="Set this True to do backfill or manual trigger.",
         ),
-        "is_full_refresh": Param(
-            default=False,
-            type="boolean",
-            description="This parameter is only used for backfill or manual trigger. If True, run full refresh.",
+        "full_refresh_flag": Param(
+            default=" ",  # Airflow UI treats empty string as None, so I use space as default
+            type="string",
+            description="This parameter is only used for backfill or manual trigger. If added '--full-refresh', run in full refresh mode.",
         ),
         "models": Param(
             default="raw_current.*",
@@ -57,24 +57,13 @@ with DAG(
         ),
     },
 ) as dag:
-    
+
     start = EmptyOperator(task_id="start", task_display_name="Start")
     end = EmptyOperator(
         task_id="end", 
         task_display_name="End", 
         trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS
     )
-    
-    # Branch: check if should skip waiting for ingestion
-    @task.branch(task_display_name="Skip Wait for Ingestion?")
-    def check_skip_wait(**context):
-        """Branch based on skip_wait_ingestion parameter."""
-        skip_wait = context["params"].get("is_backfill", False)
-        if skip_wait:
-            return "all_ingestions_done"
-        return "wait_for_all_ingestions"
-    
-    branch_skip_wait = check_skip_wait()
     
     # Wait for all Ingestion DAGs to complete
     wait_tasks = []
@@ -104,25 +93,36 @@ with DAG(
         trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS,
     )
 
+    # Branch: check if should skip waiting for ingestion
+    @task.branch(task_display_name="Skip Wait for Ingestion?")
+    def check_skip_wait(**context):
+        """Branch based on skip_wait_ingestion parameter."""
+        skip_wait = context["params"].get("is_backfill", False)
+        if skip_wait:
+            return "all_ingestions_done"
+        return "wait_for_all_ingestions"
+    
+    branch_skip_wait = check_skip_wait()
+
     dbt_daily_build = BashOperator(
         task_id="dbt_daily_build",
         task_display_name="dbt build: daily",
-        bash_command=f"cd {DBT_PROJECT_DIR} && dbt build" + " --vars '{\"snapshot_date\": \"{{ (logical_date - macros.timedelta(days=1)) | ds }}\"}'",
+        bash_command=(
+            f"cd {DBT_PROJECT_DIR} && dbt build"
+            " --vars '{\"snapshot_date\": \"{{ (logical_date - macros.timedelta(days=1)) | ds }}\"}'"
+        )
     )
 
-    base_backfill_cmd = f"cd {DBT_PROJECT_DIR} && dbt build --select {dag.params['models']}"
-    if dag.params.get("is_full_refresh", False):
-        dbt_backfill_build = BashOperator(
-            task_id="dbt_backfill_build",
-            task_display_name="dbt build: backfill",
-            bash_command=base_backfill_cmd + " --vars '{\"snapshot_date\": \"{{ (logical_date - macros.timedelta(days=1)) | ds }}\"}' --full-refresh",
+    dbt_backfill_build = BashOperator(
+        task_id="dbt_backfill_build",
+        task_display_name="dbt build: backfill",
+        bash_command=(
+            f"cd {DBT_PROJECT_DIR}"
+            " && dbt build --select {{ params.models }}"
+            " --vars '{\"snapshot_date\": \"{{ (logical_date - macros.timedelta(days=1)) | ds }}\"}'"
+            " {{ params.full_refresh_flag }}"
         )
-    else:
-        dbt_backfill_build = BashOperator(
-            task_id="dbt_backfill_build",
-            task_display_name="dbt build: backfill",
-            bash_command=base_backfill_cmd + " --vars '{\"snapshot_date\": \"{{ (logical_date - macros.timedelta(days=1)) | ds }}\"}'",
-        )   
+    )
 
     # Branch: check if backfill mode
     @task.branch(task_display_name="Backfill Mode?")
