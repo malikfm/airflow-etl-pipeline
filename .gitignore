@@ -169,6 +169,7 @@ logs/
 
 # Data Lake
 *.parquet
+*.parquet.*
 
 # Docker
 .dockerignore
