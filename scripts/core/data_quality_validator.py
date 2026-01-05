@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
@@ -14,16 +15,23 @@ class DataQualityValidator:
     def validate_parquet_file(
         self,
         table_name: str,
-        file_path: Path
+        file_path: Path,
+        rename_on_failure: bool = True,
     ) -> dict:
         """Validate a Parquet file against expectations using GX.
         
         Args:
             table_name: Name of the table to validate
             file_path: Path to Parquet file
+            rename_on_failure: If True, rename invalid files to preserve evidence
             
         Returns:
-            Validation results dictionary
+            Validation results dictionary with keys:
+            - success: Whether validation passed
+            - statistics: Validation statistics
+            - results: Detailed validation results
+            - file_path: Original file path
+            - renamed_to: Path file was renamed to (if validation failed and rename_on_failure=True)
         """
         # Read parquet file
         df = pd.read_parquet(file_path)
@@ -60,12 +68,49 @@ class DataQualityValidator:
         # Run validation
         results = validator.validate(suite)
 
-        return {
+        result_dict = {
             "success": results.success,
             "statistics": results.statistics,
             "results": results.results,
-            "file_path": str(file_path)
+            "file_path": str(file_path),
         }
+
+        # Rename invalid file if validation failed
+        if not results.success and rename_on_failure:
+            renamed_path = self.rename_invalid_file(file_path)
+            result_dict["renamed_to"] = str(renamed_path)
+
+        return result_dict
+
+    def rename_invalid_file(self, file_path: Path) -> Path:
+        """Rename an invalid file to preserve evidence.
+        
+        Format: {original_name}.invalid.{datetime_execution}
+        Where datetime_execution is in YYYYMMDD_HHmmss format (UTC).
+        
+        Example: 
+            ./data/orders/2025-01-01.parquet 
+            -> ./data/orders/2025-01-01.parquet.invalid.20250102_000130
+        
+        Args:
+            file_path: Path to the invalid file
+            
+        Returns:
+            Path to the renamed file
+        """
+        file_path = Path(file_path)
+        
+        # Generate timestamp in YYYYMMDD_HHmmss format (UTC)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        
+        # Create new filename: {original}.invalid.{timestamp}
+        new_filename = f"{file_path.name}.invalid.{timestamp}"
+        new_path = file_path.parent / new_filename
+        
+        # Rename the file
+        file_path.rename(new_path)
+        
+        return new_path
 
     def get_users_expectations(self) -> List[ExpectationConfiguration]:
         """Get expectations for users Parquet file.

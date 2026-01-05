@@ -169,8 +169,10 @@ def test_extract_table_connection_cleanup_on_error(mock_db_connection, mock_read
     """Test that connection is closed even when error occurs."""
     mock_read_sql.side_effect = Exception("Database error")
     
-    with pytest.raises(Exception):
-        extract_table_by_date("orders", "2025-12-01")
+    # Mock check_file_exists to return False so extraction is not skipped
+    with patch("scripts.core.extractor.check_file_exists", return_value=False):
+        with pytest.raises(Exception):
+            extract_table_by_date("orders", "2025-12-01")
     
     # Connection should still be closed
     mock_db_connection.close.assert_called_once()
