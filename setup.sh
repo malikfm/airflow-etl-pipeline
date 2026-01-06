@@ -23,7 +23,7 @@ fi
 
 # Create necessary directories
 echo "Creating necessary directories..."
-mkdir -p dags dbt_project scripts/core scripts/utils tests include data logs plugins
+mkdir -p dags dbt_project scripts/core scripts/utils tests data logs
 
 # Set proper permissions for Airflow
 echo "Setting up permissions for Airflow..."
