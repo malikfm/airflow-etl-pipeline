@@ -1,0 +1,32 @@
+name: 'ecommerce_dw'
+
+config-version: 2
+version: '0.1.0'
+
+profile: 'ecommerce_dw'
+
+analysis-paths: ["analyses"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  ecommerce_dw:    
+    # Raw Current (deduplicated latest state from raw_ingest)
+    raw_current:
+      +materialized: incremental
+      +on_schema_change: "append_new_columns"
+      +schema: raw_current
+      +unique_key: id
+    
+    # Facts tables
+    facts:
+      +materialized: incremental
+      +on_schema_change: "append_new_columns"
+      +schema: analytics
+
+snapshots:
+  ecommerce_dw:
+    dimensions:
+      +schema: analytics
