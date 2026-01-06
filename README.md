@@ -381,4 +381,4 @@ MIT License. See LICENSE file for details.
 
 ## Author
 
-Malik Fajar Mubarok
+[Malik Fajar Mubarok](https://github.com/malikfm)
