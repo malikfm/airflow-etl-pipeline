@@ -40,7 +40,13 @@ dev-dependencies = [
 [tool.ruff]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "DTZ", "T10", "EM", "ISC", "ICN", "PIE", "PT", "Q", "RSE", "RET", "SIM", "TID", "ARG", "PLE", "PLR", "PLW", "RUF"]
-ignore = ["E501"]  # Line too long (handled by formatter)
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+    "W293",  # Blank line contains whitespace (docstring)
+    "PT011",  # Some tests need to use broad exception
+    "B017",  # Some tests need to use broad exception
+    "DTZ007",  # Date string to datetime (without timezone)
+]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -69,6 +75,10 @@ exclude = [
     "dist",
     "node_modules",
     "venv",
+    "scripts/seed_source_db.py",
+    "scripts/run_extract_locally.py",
+    "scripts/run_load_locally.py",
+    "scripts/run_validate_locally.py",
 ]
 
 line-length = 120
@@ -85,6 +95,7 @@ known-first-party = ["scripts", "dags"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -96,10 +107,12 @@ addopts = [
 ]
 
 [tool.ty.environment]
-python = "./venv"
+python = ".venv"
 python-version = "3.12"
-include = ["./scripts", "./dags", "./tests"]
-exclude = ["./data", "./dbt_project", "./include", "./logs", "./plugins"]
+root = ["./"]
+
+[tool.ty.src]
+exclude = ["./dags", "./dbt_project", "./tests"]
 
 [tool.ty.rules]
 deprecated = "warn"
@@ -111,6 +124,7 @@ invalid-declaration = "error"
 invalid-key = "error"
 invalid-return-type = "error"
 missing-argument = "error"
+no-matching-overload = "error"
 non-subscriptable = "error"
 not-iterable = "error"
 possibly-missing-attribute = "warn"
