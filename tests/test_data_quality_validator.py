@@ -1,5 +1,4 @@
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -283,20 +282,20 @@ def test_rename_invalid_file_on_validation_failure(temp_parquet_file):
     }
     file_path = temp_parquet_file(data)
     original_path = Path(file_path)
-    
+
     validator = DataQualityValidator()
     result = validator.validate_parquet_file("order_items", file_path)
-    
+
     # Validation should fail
     assert result["success"] is False
-    
+
     # File should be renamed
     assert "renamed_to" in result
     renamed_path = Path(result["renamed_to"])
-    
+
     # Renamed file should exist
     assert renamed_path.exists()
-    
+
     # Original file should NOT exist
     assert not original_path.exists()
 
@@ -311,15 +310,15 @@ def test_rename_invalid_file_format(temp_parquet_file):
         "quantity": [2, 1],
     }
     file_path = temp_parquet_file(data)
-    
+
     validator = DataQualityValidator()
     result = validator.validate_parquet_file("order_items", file_path)
-    
+
     assert result["success"] is False
     assert "renamed_to" in result
-    
+
     renamed_path = Path(result["renamed_to"])
-    
+
     # Check filename format: test.parquet.invalid.YYYYMMDD_HHMMSS
     pattern = r"^test\.parquet\.invalid\.\d{8}_\d{6}$"
     assert re.match(pattern, renamed_path.name), f"Filename {renamed_path.name} doesn't match expected pattern"
@@ -336,16 +335,16 @@ def test_rename_on_failure_false(temp_parquet_file):
     }
     file_path = temp_parquet_file(data)
     original_path = Path(file_path)
-    
+
     validator = DataQualityValidator()
     result = validator.validate_parquet_file("order_items", file_path, rename_on_failure=False)
-    
+
     # Validation should fail
     assert result["success"] is False
-    
+
     # File should NOT be renamed
     assert "renamed_to" not in result
-    
+
     # Original file should still exist
     assert original_path.exists()
 
@@ -361,16 +360,16 @@ def test_valid_file_not_renamed(temp_parquet_file):
     }
     file_path = temp_parquet_file(data)
     original_path = Path(file_path)
-    
+
     validator = DataQualityValidator()
     result = validator.validate_parquet_file("order_items", file_path)
-    
+
     # Validation should pass
     assert result["success"] is True
-    
+
     # File should NOT be renamed
     assert "renamed_to" not in result
-    
+
     # Original file should still exist
     assert original_path.exists()
 
@@ -387,14 +386,14 @@ def test_rename_invalid_file_preserves_parent_directory(temp_parquet_file):
     file_path = temp_parquet_file(data)
     original_path = Path(file_path)
     original_parent = original_path.parent
-    
+
     validator = DataQualityValidator()
     result = validator.validate_parquet_file("order_items", file_path)
-    
+
     assert result["success"] is False
     assert "renamed_to" in result
-    
+
     renamed_path = Path(result["renamed_to"])
-    
+
     # Renamed file should be in the same directory
     assert renamed_path.parent == original_parent

@@ -69,6 +69,7 @@ def test_truncate_and_load_success(
         "value": [100, 200, 300],
     }
     file_path = temp_parquet_file(data)
+    row_count = len(data["id"])
 
     mock_connection, mock_cursor = mock_db_connection
     mock_engine = MagicMock()
@@ -97,7 +98,7 @@ def test_truncate_and_load_success(
         assert call_kwargs["method"] == "multi"
 
         # Verify row count (3 original rows)
-        assert result == 3
+        assert result == row_count
 
         # Verify connection cleanup
         mock_connection.close.assert_called_once()
@@ -113,15 +114,16 @@ def test_truncate_and_load_orders(temp_parquet_file, mock_db_connection, mock_sq
         "updated_at": pd.date_range("2025-12-01", periods=2),
     }
     file_path = temp_parquet_file(data, "orders.parquet")
+    row_count = len(data["id"])
 
-    mock_connection, mock_cursor = mock_db_connection
+    _, mock_cursor = mock_db_connection
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
         result = truncate_and_load("orders", file_path, "20260101")
 
-        assert result == 2
-        
+        assert result == row_count
+
         # Verify DELETE was called for raw_ingest.orders
         delete_calls = [
             str(call) for call in mock_cursor.execute.call_args_list
@@ -139,15 +141,16 @@ def test_truncate_and_load_order_items(temp_parquet_file, mock_db_connection, mo
         "quantity": [2, 1, 5],
     }
     file_path = temp_parquet_file(data, "order_items.parquet")
+    row_count = len(data["id"])
 
-    mock_connection, mock_cursor = mock_db_connection
+    _, mock_cursor = mock_db_connection
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
         result = truncate_and_load("order_items", file_path, "20260101")
 
-        assert result == 3
-        
+        assert result == row_count
+
         # Verify DELETE was called for raw_ingest.order_items
         delete_calls = [
             str(call) for call in mock_cursor.execute.call_args_list
@@ -168,15 +171,16 @@ def test_truncate_and_load_users(temp_parquet_file, mock_db_connection, mock_sql
         "deleted_at": [None, None, None],
     }
     file_path = temp_parquet_file(data, "users.parquet")
+    row_count = len(data["id"])
 
-    mock_connection, mock_cursor = mock_db_connection
+    _, mock_cursor = mock_db_connection
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
         result = truncate_and_load("users", file_path, "20260101")
 
-        assert result == 3
-        
+        assert result == row_count
+
         # Verify DELETE was called for raw_ingest.users
         delete_calls = [
             str(call) for call in mock_cursor.execute.call_args_list
@@ -197,15 +201,16 @@ def test_truncate_and_load_products(temp_parquet_file, mock_db_connection, mock_
         "deleted_at": [None, None, None],
     }
     file_path = temp_parquet_file(data, "products.parquet")
+    row_count = len(data["id"])
 
-    mock_connection, mock_cursor = mock_db_connection
+    _, mock_cursor = mock_db_connection
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
         result = truncate_and_load("products", file_path, "20260101")
 
-        assert result == 3
-        
+        assert result == row_count
+
         # Verify DELETE was called for raw_ingest.products
         delete_calls = [
             str(call) for call in mock_cursor.execute.call_args_list
@@ -214,9 +219,8 @@ def test_truncate_and_load_products(temp_parquet_file, mock_db_connection, mock_
         assert len(delete_calls) == 1
 
 
-def test_truncate_and_load_with_different_dtypes(
-    temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine
-):
+@pytest.mark.usefixtures("mock_db_connection")
+def test_truncate_and_load_with_different_dtypes(temp_parquet_file, mock_sqlalchemy_engine):
     """Test loading data with various data types."""
     data = {
         "int_col": [1, 2, 3],
@@ -226,22 +230,21 @@ def test_truncate_and_load_with_different_dtypes(
         "datetime_col": pd.date_range("2025-12-01", periods=3),
     }
     file_path = temp_parquet_file(data)
+    row_count = len(data["int_col"])
 
-    mock_connection, mock_cursor = mock_db_connection
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
         result = truncate_and_load("test_types", file_path, "20260101")
 
-        assert result == 3
+        assert result == row_count
 
 
-def test_truncate_and_load_idempotency(
-    temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine
-):
+def test_truncate_and_load_idempotency(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
     """Test that loading same data twice produces same result (idempotency)."""
     data = {"id": [1, 2, 3], "value": [100, 200, 300]}
     file_path = temp_parquet_file(data)
+    row_count = len(data["id"])
 
     mock_connection, mock_cursor = mock_db_connection
     mock_sqlalchemy_engine.return_value = MagicMock()
@@ -260,7 +263,7 @@ def test_truncate_and_load_idempotency(
         result2 = truncate_and_load("test_table", file_path, batch_id)
 
         # Both should return same row count
-        assert result1 == result2 == 3
+        assert result1 == result2 == row_count
 
         # Verify DELETE was called second time too
         delete_calls = [
@@ -270,29 +273,27 @@ def test_truncate_and_load_idempotency(
         assert len(delete_calls) == 1
 
 
-def test_truncate_and_load_different_batch_ids(
-    temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine
-):
+def test_truncate_and_load_different_batch_ids(temp_parquet_file, mock_db_connection, mock_sqlalchemy_engine):
     """Test loading with different batch_ids deletes only matching batch."""
     data = {"id": [1, 2], "value": [100, 200]}
     file_path = temp_parquet_file(data)
 
-    mock_connection, mock_cursor = mock_db_connection
+    _, mock_cursor = mock_db_connection
     mock_sqlalchemy_engine.return_value = MagicMock()
 
     with patch.object(pd.DataFrame, "to_sql"):
         # Load with first batch_id
         truncate_and_load("test_table", file_path, "20260101")
-        
+
         # Verify DELETE uses correct batch_id
         delete_call = str(mock_cursor.execute.call_args_list[0])
         assert "20260101" in delete_call
-        
+
         mock_cursor.reset_mock()
-        
-        # Load with second batch_id  
+
+        # Load with second batch_id
         truncate_and_load("test_table", file_path, "20260102")
-        
+
         # Verify DELETE uses new batch_id
         delete_call = str(mock_cursor.execute.call_args_list[0])
         assert "20260102" in delete_call

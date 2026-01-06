@@ -12,10 +12,10 @@ def get_data_lake_path(table_name: str, execution_date: str) -> Path:
     Args:
         table_name: Name of the table (e.g., 'orders', 'products')
         execution_date: Date in YYYY-MM-DD format
-        
+                
     Returns:
         Path object pointing to the parquet file
-        
+
     Example:
         >>> get_data_lake_path('orders', '2024-01-01')
         PosixPath('data/orders/2024-01-01.parquet')

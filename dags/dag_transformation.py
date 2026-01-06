@@ -6,7 +6,7 @@ from airflow.models import Param
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.standard.sensors.external_task import ExternalTaskSensor
-from airflow.sdk import DAG, get_current_context, task, TriggerRule
+from airflow.sdk import DAG, TriggerRule, task
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -60,11 +60,11 @@ with DAG(
 
     start = EmptyOperator(task_id="start", task_display_name="Start")
     end = EmptyOperator(
-        task_id="end", 
-        task_display_name="End", 
+        task_id="end",
+        task_display_name="End",
         trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS
     )
-    
+
     # Wait for all Ingestion DAGs to complete
     wait_tasks = []
     for dag_id in INGESTION_DAGS:
@@ -80,7 +80,7 @@ with DAG(
             failed_states=["failed", "skipped"],
         )
         wait_tasks.append(wait_task)
-    
+
     # Wait for all ingestions
     wait_for_all_ingestions = EmptyOperator(
         task_id="wait_for_all_ingestions",
@@ -101,7 +101,7 @@ with DAG(
         if skip_wait:
             return "all_ingestions_done"
         return "wait_for_all_ingestions"
-    
+
     branch_skip_wait = check_skip_wait()
 
     dbt_daily_build = BashOperator(
@@ -133,24 +133,24 @@ with DAG(
             # Skip analytics and snapshots in backfill mode
             return "dbt_backfill_build"
         return "dbt_daily_build"
-    
+
     branch_backfill = check_backfill_mode()
-    
+
     # Task dependencies
     # Start -> Check if skip wait
     start >> branch_skip_wait
-    
+
     # Normal path: wait for ingestions
     branch_skip_wait >> wait_for_all_ingestions >> wait_tasks >> all_ingestions_done
-    
+
     # Skip wait path: go directly to all_ingestions_done
     branch_skip_wait >> all_ingestions_done
-    
+
     # Continue with dbt tasks
     all_ingestions_done >> branch_backfill
-    
+
     # Normal mode: run snapshots and analytics
     branch_backfill >> dbt_daily_build >> end
-    
+
     # Backfill mode: skip to end
     branch_backfill >> dbt_backfill_build >> end

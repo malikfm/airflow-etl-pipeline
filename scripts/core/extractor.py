@@ -9,7 +9,7 @@ from scripts.utils.file import check_file_exists, get_data_lake_path
 def extract_table_by_date(
     table_name: str,
     execution_date: str
-) -> Path:
+) -> Path | None:
     """Extract data from a table filtered by date_column.
     
     Args:
@@ -23,24 +23,24 @@ def extract_table_by_date(
     if check_file_exists(output_path):
         print(f"File {output_path} already exists. Skipping extraction.")
         return output_path
-    
+
     conn = get_source_db_connection()
-    
+
     try:
         query = f"""
-            SELECT * 
-            FROM {table_name} 
+            SELECT *
+            FROM {table_name}
             WHERE created_at::DATE = %s
             OR updated_at::DATE = %s
         """
-        
-        df = pd.read_sql_query(query, conn, params=(execution_date, execution_date))
+
+        df = pd.read_sql_query(query, conn, params=[execution_date, execution_date])
         print(f"Extracted {len(df)} rows from {table_name} for {execution_date}")
-        
+
         if df.empty:
             print(f"No new data for {table_name} for {execution_date}")
             return None
-        
+
         df.to_parquet(output_path, index=False, engine="pyarrow")
         print(f"Saved {len(df)} {table_name} to {output_path}")
         return output_path
@@ -54,7 +54,7 @@ def extract_child_table_by_parent_table(
     primary_key_in_parent: str,
     foreign_key_in_child: str,
     execution_date: str
-) -> Path:
+) -> Path | None:
     """Extract child table data based on parent table.
     
     Child table is a table that doesn't have a date_column,
@@ -75,7 +75,7 @@ def extract_child_table_by_parent_table(
     if check_file_exists(output_path):
         print(f"File {output_path} already exists. Skipping extraction.")
         return output_path
-    
+
     # Get parent ids from parent parquet file
     parent_ids = pd.read_parquet(parent_parquet_path)[primary_key_in_parent].tolist()
 
@@ -84,15 +84,15 @@ def extract_child_table_by_parent_table(
         return None
 
     conn = get_source_db_connection()
-    
+
     try:
         query = f"""
-            SELECT * 
+            SELECT *
             FROM {child_table_name}
             WHERE {foreign_key_in_child} IN %s
         """
-        
-        df = pd.read_sql_query(query, conn, params=(tuple(parent_ids),))
+
+        df = pd.read_sql_query(query, conn, params=[tuple(parent_ids)])
         print(f"Extracted {len(df)} {child_table_name} for {execution_date}")
 
         df.to_parquet(output_path, index=False, engine="pyarrow")

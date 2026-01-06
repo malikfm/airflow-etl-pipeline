@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pendulum
 from airflow.providers.standard.operators.empty import EmptyOperator
-from airflow.sdk import DAG, task, TriggerRule
+from airflow.sdk import DAG, TriggerRule, task
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -59,7 +59,7 @@ with DAG(
         """Extract parent table from source DB to data lake."""
         snapshot_date = subtract_one_day(kwargs["logical_date"])
         extract_table_by_date(table_name, snapshot_date)
-    
+
 
     @task
     def extract_child(
@@ -84,12 +84,12 @@ with DAG(
     def validate_data_exists(table_name: str, **kwargs):
         """Check if a file exists."""
         snapshot_date = subtract_one_day(kwargs["logical_date"])
-        
+
         file_path = get_data_lake_path(table_name, snapshot_date)
         if not check_file_exists(file_path):
             print(f"No data for {snapshot_date}")
             return "end"
-        
+
         print(f"Data for {snapshot_date} exists")
         return f"validate_data_quality_{table_name}"
 
@@ -113,7 +113,8 @@ with DAG(
             print(f"{table_name} validation passed")
         else:
             print(f"{table_name} validation failed")
-            raise ValueError("Data quality validation failed, stopping pipeline.")
+            err_msg = "Data quality validation failed, stopping pipeline."
+            raise ValueError(err_msg)
 
 
     @task
@@ -121,9 +122,9 @@ with DAG(
         """Load validated data from data lake to raw_ingest tables."""
         snapshot_date = subtract_one_day(kwargs["logical_date"])
         batch_id = snapshot_date.replace("-", "")
-        
+
         print(f"Loading {table_name} to raw_ingest for {snapshot_date}")
-        
+
         file_path = get_data_lake_path(table_name, snapshot_date)
         truncate_and_load(table_name, file_path, batch_id)
 
@@ -131,46 +132,46 @@ with DAG(
     # Start and end tasks
     start = EmptyOperator(task_id="start", task_display_name="Start")
     end = EmptyOperator(task_id="end", task_display_name="End", trigger_rule=TriggerRule.NONE_FAILED)
-    
+
     # Branch
-    branch = validate_data_exists(PARENT_TABLE['name'])
+    branch = validate_data_exists(PARENT_TABLE["name"])
 
     # Parent tasks
     parent_extraction_task = extract_parent.override(
         task_id=f"extract_{PARENT_TABLE['name']}_to_lake",
-        task_display_name=f"Extract \"{PARENT_TABLE['name']}\" to data lake"
-    )(PARENT_TABLE['name'])
-    
+        task_display_name=f'Extract "{PARENT_TABLE['name']}" to data lake'
+    )(PARENT_TABLE["name"])
+
     parent_data_quality_validation_task = validate_data_quality.override(
         task_id=f"validate_data_quality_{PARENT_TABLE['name']}",
-        task_display_name=f"Validate \"{PARENT_TABLE['name']}\" data quality"
-    )(PARENT_TABLE['name'])
-    
+        task_display_name=f'Validate "{PARENT_TABLE['name']}" data quality'
+    )(PARENT_TABLE["name"])
+
     parent_load_task = load.override(
         task_id=f"load_{PARENT_TABLE['name']}_to_raw_ingest",
-        task_display_name=f"Load \"{PARENT_TABLE['name']}\" to raw_ingest"
-    )(PARENT_TABLE['name'])
-    
+        task_display_name=f'Load "{PARENT_TABLE['name']}" to raw_ingest'
+    )(PARENT_TABLE["name"])
+
     # Set task dependencies
     start >> parent_extraction_task >> branch
 
     if CHILD_TABLES:
         # Child Tasks
-        for idx, child_table in enumerate(CHILD_TABLES):
+        for child_table in CHILD_TABLES:
             child_extraction_task = extract_child.override(
                 task_id=f"extract_{child_table['name']}_to_lake",
-                task_display_name=f"Extract \"{child_table['name']}\" to data lake"
-            )(PARENT_TABLE['name'], child_table['name'], PARENT_TABLE['pk'], child_table['p_fk'])
+                task_display_name=f'Extract "{child_table['name']}" to data lake'
+            )(PARENT_TABLE["name"], child_table["name"], PARENT_TABLE["pk"], child_table["p_fk"])
 
             child_data_quality_validation_task = validate_data_quality.override(
                 task_id=f"validate_data_quality_{child_table['name']}",
-                task_display_name=f"Validate \"{child_table['name']}\" data quality"
-            )(child_table['name'])
+                task_display_name=f'Validate "{child_table['name']}" data quality'
+            )(child_table["name"])
 
             child_load_task = load.override(
                 task_id=f"load_{child_table['name']}_to_raw_ingest",
-                task_display_name=f"Load \"{child_table['name']}\" to raw_ingest"
-            )(child_table['name'])
+                task_display_name=f'Load "{child_table['name']}" to raw_ingest'
+            )(child_table["name"])
 
             # Parent dependencies
             branch >> parent_data_quality_validation_task >> parent_load_task >> end
@@ -178,5 +179,5 @@ with DAG(
             parent_load_task >> child_extraction_task >> child_data_quality_validation_task >> child_load_task >> end
     else:
         branch >> parent_data_quality_validation_task >> parent_load_task >> end
-    
+
     branch >> end

@@ -45,10 +45,10 @@ def truncate_and_load(
     df["batch_id"] = batch_id
 
     raw_ingest_table = f"{SCHEMA_NAME}.{table_name}"
-    
+
     # Get database connection for truncate
     conn = get_dwh_db_connection()
-    
+
     try:
         with conn.cursor() as cur:
             # Truncate table (preserves structure and data types)
@@ -56,7 +56,7 @@ def truncate_and_load(
         conn.commit()
     finally:
         conn.close()
-    
+
     # Load data using pandas to_sql with append
     engine = create_engine(
         f"postgresql://{os.getenv('DWH_DB_USER', 'user')}:"
@@ -65,7 +65,7 @@ def truncate_and_load(
         f"{os.getenv('DWH_DB_PORT', '5434')}/"
         f"{os.getenv('DWH_DB_NAME', 'warehouse_db')}"
     )
-    
+
     df.to_sql(
         table_name,
         engine,
@@ -74,8 +74,8 @@ def truncate_and_load(
         index=False,
         method="multi",
     )
-    
+
     row_count = len(df)
     print(f"Loaded {row_count} rows into {raw_ingest_table}")
-    
+
     return row_count

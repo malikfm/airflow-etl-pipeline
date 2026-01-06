@@ -36,10 +36,10 @@ def validate_extraction(execution_date: str) -> bool:
             results["orders"] = result
 
             if result["success"]:
-                print(f"Orders validation PASSED")
+                print("Orders validation PASSED")
                 print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
             else:
-                print(f"Orders validation FAILED")
+                print("Orders validation FAILED")
                 all_passed = False
                 _print_failures(result)
         except Exception as e:
@@ -57,10 +57,10 @@ def validate_extraction(execution_date: str) -> bool:
             results["order_items"] = result
 
             if result["success"]:
-                print(f"Order items validation PASSED")
+                print("Order items validation PASSED")
                 print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
             else:
-                print(f"Order items validation FAILED")
+                print("Order items validation FAILED")
                 all_passed = False
                 _print_failures(result)
         except Exception as e:
@@ -78,10 +78,10 @@ def validate_extraction(execution_date: str) -> bool:
             results["users"] = result
 
             if result["success"]:
-                print(f"Users validation PASSED")
+                print("Users validation PASSED")
                 print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
             else:
-                print(f"Users validation FAILED")
+                print("Users validation FAILED")
                 all_passed = False
                 _print_failures(result)
         except Exception as e:
@@ -99,10 +99,10 @@ def validate_extraction(execution_date: str) -> bool:
             results["products"] = result
 
             if result["success"]:
-                print(f"Products validation PASSED")
+                print("Products validation PASSED")
                 print(f"Validated {result['statistics']['evaluated_expectations']} expectations")
             else:
-                print(f"Products validation FAILED")
+                print("Products validation FAILED")
                 all_passed = False
                 _print_failures(result)
         except Exception as e:
@@ -116,10 +116,9 @@ def validate_extraction(execution_date: str) -> bool:
         print("\nALL VALIDATIONS PASSED")
         print(f"Data quality check completed successfully for {execution_date}")
         return True
-    else:
-        print("\nVALIDATION FAILED")
-        print("Pipeline will stop. Please fix data quality issues.")
-        return False
+    print("\nVALIDATION FAILED")
+    print("Pipeline will stop. Please fix data quality issues.")
+    return False
 
 
 def _print_failures(result: dict) -> None:
@@ -135,9 +134,9 @@ def main():
     parser = argparse.ArgumentParser(description="Extract data sources for a given execution date.")
     parser.add_argument("--execution-date", type=str, required=True, help="Date in YYYY-MM-DD format")
     args = parser.parse_args()
-    
+
     execution_date = args.execution_date
-    
+
     # Validate date format
     try:
         datetime.strptime(execution_date, "%Y-%m-%d")
@@ -152,8 +151,8 @@ def main():
     if not success:
         print("\nExiting with error code 1")
         return 1
-    else:
-        print("\nValidation completed successfully")
+    print("\nValidation completed successfully")
+    return 0
 
 
 if __name__ == "__main__":

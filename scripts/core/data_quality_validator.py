@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import List
 
 import great_expectations as gx
 import pandas as pd
@@ -38,13 +37,13 @@ class DataQualityValidator:
 
         # Add pandas data source
         data_source = self.context.data_sources.add_pandas(f"{table_name}_data_source")
-        
+
         # Add dataframe asset
         data_asset = data_source.add_dataframe_asset(name=f"{table_name}_data_asset")
-        
+
         # Build batch definition
         batch_definition = data_asset.add_batch_definition_whole_dataframe(f"{table_name}_batch")
-        
+
         # Link the batch to the dataframe
         batch_parameters = {"dataframe": df}
         validator = batch_definition.get_batch(batch_parameters)
@@ -60,7 +59,8 @@ class DataQualityValidator:
             case "order_items":
                 expectations = self.get_order_items_expectations()
             case _:
-                raise ValueError(f"Unknown context name: {table_name}")
+                err_msg = f"Unknown context name: {table_name}"
+                raise ValueError(err_msg)
 
         suite = gx.ExpectationSuite(f"{table_name}_suite")
         suite.add_expectation_configurations(expectations)
@@ -88,8 +88,8 @@ class DataQualityValidator:
         Format: {original_name}.invalid.{datetime_execution}
         Where datetime_execution is in YYYYMMDD_HHmmss format (UTC).
         
-        Example: 
-            ./data/orders/2025-01-01.parquet 
+        Example:
+            ./data/orders/2025-01-01.parquet
             -> ./data/orders/2025-01-01.parquet.invalid.20250102_000130
         
         Args:
@@ -99,20 +99,20 @@ class DataQualityValidator:
             Path to the renamed file
         """
         file_path = Path(file_path)
-        
+
         # Generate timestamp in YYYYMMDD_HHmmss format (UTC)
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+
         # Create new filename: {original}.invalid.{timestamp}
         new_filename = f"{file_path.name}.invalid.{timestamp}"
         new_path = file_path.parent / new_filename
-        
+
         # Rename the file
         file_path.rename(new_path)
-        
+
         return new_path
 
-    def get_users_expectations(self) -> List[ExpectationConfiguration]:
+    def get_users_expectations(self) -> list[ExpectationConfiguration]:
         """Get expectations for users Parquet file.
         
         Expectations:
@@ -123,7 +123,7 @@ class DataQualityValidator:
         Returns:
             List of expectations
         """
-        expectations = [
+        return [
             ExpectationConfiguration(
                 type="expect_table_row_count_to_be_between",
                 kwargs={"min_value": 1}
@@ -142,9 +142,7 @@ class DataQualityValidator:
             )
         ]
 
-        return expectations
-
-    def get_products_expectations(self) -> List[ExpectationConfiguration]:
+    def get_products_expectations(self) -> list[ExpectationConfiguration]:
         """Get expectations for products Parquet file.
         
         Expectations:
@@ -155,7 +153,7 @@ class DataQualityValidator:
         Returns:
             List of expectations
         """
-        expectations = [
+        return [
             ExpectationConfiguration(
                 type="expect_table_row_count_to_be_between",
                 kwargs={"min_value": 1}
@@ -170,9 +168,7 @@ class DataQualityValidator:
             )
         ]
 
-        return expectations
-
-    def get_order_expectations(self) -> List[ExpectationConfiguration]:
+    def get_order_expectations(self) -> list[ExpectationConfiguration]:
         """Get expectations for orders Parquet file.
         
         Expectations:
@@ -184,7 +180,7 @@ class DataQualityValidator:
         Returns:
             List of expectations
         """
-        expectations = [
+        return [
             ExpectationConfiguration(
                 type="expect_table_row_count_to_be_between",
                 kwargs={"min_value": 1}
@@ -203,9 +199,7 @@ class DataQualityValidator:
             )
         ]
 
-        return expectations
-
-    def get_order_items_expectations(self) -> List[ExpectationConfiguration]:
+    def get_order_items_expectations(self) -> list[ExpectationConfiguration]:
         """Get expectations for order_items Parquet file.
         
         Expectations:
@@ -216,7 +210,7 @@ class DataQualityValidator:
         Returns:
             List of expectations
         """
-        expectations = [
+        return [
             ExpectationConfiguration(
                 type="expect_column_to_exist",
                 kwargs={"column": "order_id"}
@@ -234,5 +228,3 @@ class DataQualityValidator:
                 kwargs={"column": "quantity", "min_value": 1}
             )
         ]
-
-        return expectations

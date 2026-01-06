@@ -1,8 +1,7 @@
 """Execute seeding locally."""
 import os
 import random
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import UTC, datetime, timedelta
 
 import pandas as pd
 import psycopg2
@@ -112,7 +111,7 @@ def create_warehouse_tables(conn: connection) -> None:
         # Create schemas
         cur.execute("CREATE SCHEMA IF NOT EXISTS raw_ingest")
         cur.execute("CREATE SCHEMA IF NOT EXISTS raw_current")
-        
+
         # Drop existing tables in raw_ingest
         cur.execute("""
             DROP TABLE IF EXISTS raw_ingest.order_items CASCADE;
@@ -120,7 +119,7 @@ def create_warehouse_tables(conn: connection) -> None:
             DROP TABLE IF EXISTS raw_ingest.products CASCADE;
             DROP TABLE IF EXISTS raw_ingest.users CASCADE;
         """)
-        
+
         # Drop existing tables in raw_current
         cur.execute("""
             DROP TABLE IF EXISTS raw_current.order_items CASCADE;
@@ -128,7 +127,7 @@ def create_warehouse_tables(conn: connection) -> None:
             DROP TABLE IF EXISTS raw_current.products CASCADE;
             DROP TABLE IF EXISTS raw_current.users CASCADE;
         """)
-        
+
         # Create raw_ingest tables (no constraints, no defaults)
         cur.execute("""
             CREATE TABLE raw_ingest.users (
@@ -142,7 +141,7 @@ def create_warehouse_tables(conn: connection) -> None:
                 deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
-        
+
         cur.execute("""
             CREATE TABLE raw_ingest.products (
                 batch_id CHAR(8),
@@ -155,7 +154,7 @@ def create_warehouse_tables(conn: connection) -> None:
                 deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
-        
+
         cur.execute("""
             CREATE TABLE raw_ingest.orders (
                 batch_id CHAR(8),
@@ -166,7 +165,7 @@ def create_warehouse_tables(conn: connection) -> None:
                 updated_at TIMESTAMP WITH TIME ZONE
             );
         """)
-        
+
         cur.execute("""
             CREATE TABLE raw_ingest.order_items (
                 batch_id CHAR(8),
@@ -176,7 +175,7 @@ def create_warehouse_tables(conn: connection) -> None:
                 quantity INTEGER
             );
         """)
-        
+
         # Create raw_current tables (same structure as raw_ingest)
         cur.execute("""
             CREATE TABLE raw_current.users (
@@ -189,7 +188,7 @@ def create_warehouse_tables(conn: connection) -> None:
                 deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
-        
+
         cur.execute("""
             CREATE TABLE raw_current.products (
                 id INTEGER,
@@ -201,7 +200,7 @@ def create_warehouse_tables(conn: connection) -> None:
                 deleted_at TIMESTAMP WITH TIME ZONE
             );
         """)
-        
+
         cur.execute("""
             CREATE TABLE raw_current.orders (
                 id INTEGER,
@@ -211,7 +210,7 @@ def create_warehouse_tables(conn: connection) -> None:
                 updated_at TIMESTAMP WITH TIME ZONE
             );
         """)
-        
+
         cur.execute("""
             CREATE TABLE raw_current.order_items (
                 id INTEGER,
@@ -220,7 +219,7 @@ def create_warehouse_tables(conn: connection) -> None:
                 quantity INTEGER
             );
         """)
-        
+
         conn.commit()
         print("Warehouse tables created successfully (staging and raw schemas)")
 
@@ -228,8 +227,8 @@ def create_warehouse_tables(conn: connection) -> None:
 def generate_users(num_users: int = 100) -> pd.DataFrame:
     """Generate user data."""
     users = []
-    base_time = datetime.now(timezone.utc) - timedelta(days=90)
-    
+    base_time = datetime.now(UTC) - timedelta(days=90)
+
     for i in range(num_users):
         deleted_at = None
         timedelta_created_at = random.randint(0, 90)
@@ -254,11 +253,11 @@ def generate_users(num_users: int = 100) -> pd.DataFrame:
                 minute=random.randint(0, 59),
                 second=random.randint(0, 59),
             )
-        
+
             # 5% of users are soft deleted
             if random.random() < 0.05:
                 deleted_at = updated_at
-        
+
         users.append({
             "name": fake.name(),
             "email": fake.unique.email(),
@@ -284,8 +283,8 @@ def generate_products(num_products: int = 50) -> pd.DataFrame:
     ]
 
     products = []
-    base_time = datetime.now(timezone.utc) - timedelta(days=90)
-    
+    base_time = datetime.now(UTC) - timedelta(days=90)
+
     for i in range(num_products):
         deleted_at = None
         category = random.choice(categories)
@@ -315,7 +314,7 @@ def generate_products(num_products: int = 50) -> pd.DataFrame:
             # 3% of products are soft deleted
             if random.random() < 0.03:
                 deleted_at = updated_at
-        
+
         products.append({
             "name": fake.catch_phrase(),
             "category": category,
@@ -335,14 +334,14 @@ def generate_orders(users_df: pd.DataFrame, num_orders: int = 500) -> pd.DataFra
     statuses = ["pending", "shipped", "completed", "cancelled"]
     orders = []
 
-    base_time = datetime.now(timezone.utc) - timedelta(days=90)
+    base_time = datetime.now(UTC) - timedelta(days=90)
 
     for _ in range(num_orders):
         status = random.choice(statuses)
-        
+
         if status == "pending":
             # Create user lookup for created_at
-            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=1)]
+            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=1)]
             user_created_at = filtered_users_df.set_index("id")["created_at"].to_dict()
             user_ids = list(user_created_at.keys())
 
@@ -356,24 +355,24 @@ def generate_orders(users_df: pd.DataFrame, num_orders: int = 500) -> pd.DataFra
 
             # Pending orders are recent (last 2 weeks)
             created_at = base_time + timedelta(days=random.randint(max(days_since_base, 76), 90))
-            
+
             # Add some randomness to hours/minutes
             created_at = created_at.replace(
                 hour=random.randint(0, 23),
                 minute=random.randint(0, 59),
                 second=random.randint(0, 59),
             )
-            
+
             # There might be a case where the day is the same but the hour is before user created
             # Ensure order is after user
             if created_at <= user_created:
                 created_at = user_created + timedelta(hours=random.randint(1, 24))
-            
+
             updated_at = created_at
-        
+
         elif status == "shipped":
             # Create user lookup for created_at
-            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=5)]
+            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=5)]
             user_created_at = filtered_users_df.set_index("id")["created_at"].to_dict()
             user_ids = list(user_created_at.keys())
 
@@ -387,31 +386,31 @@ def generate_orders(users_df: pd.DataFrame, num_orders: int = 500) -> pd.DataFra
 
             # Shipped orders are 1-4 weeks old
             created_at = base_time + timedelta(days=random.randint(max(days_since_base, 61), 85))
-            
+
             # Add some randomness to hours/minutes
             created_at = created_at.replace(
                 hour=random.randint(0, 23),
                 minute=random.randint(0, 59),
                 second=random.randint(0, 59),
             )
-            
+
             # There might be a case where the day is the same but the hour is before user created
             # Ensure order is after user
             if created_at <= user_created:
                 created_at = user_created + timedelta(hours=random.randint(1, 24))
-            
+
             updated_at = created_at + timedelta(days=random.randint(1, 5))
-            
+
             # Add some randomness to hours/minutes
             updated_at = updated_at.replace(
                 hour=random.randint(0, 23),
                 minute=random.randint(0, 59),
                 second=random.randint(0, 59),
             )
-        
+
         else:  # completed or cancelled
             # Create user lookup for created_at
-            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=15)]
+            filtered_users_df = users_df[users_df["created_at"] < pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=15)]
             user_created_at = filtered_users_df.set_index("id")["created_at"].to_dict()
             user_ids = list(user_created_at.keys())
 
@@ -425,21 +424,21 @@ def generate_orders(users_df: pd.DataFrame, num_orders: int = 500) -> pd.DataFra
 
             # Older orders (1-11 weeks old)
             created_at = base_time + timedelta(days=random.randint(max(days_since_base, 11), 75))
-            
+
             # Add some randomness to hours/minutes
             created_at = created_at.replace(
                 hour=random.randint(0, 23),
                 minute=random.randint(0, 59),
                 second=random.randint(0, 59),
             )
-            
+
             # There might be a case where the day is the same but the hour is before user created
             # Ensure order is after user
             if created_at <= user_created:
                 created_at = user_created + timedelta(hours=random.randint(1, 24))
-            
+
             updated_at = created_at + timedelta(days=random.randint(5, 15))
-            
+
             # Add some randomness to hours/minutes
             updated_at = updated_at.replace(
                 hour=random.randint(0, 23),
@@ -464,7 +463,7 @@ def generate_order_items(orders_df: pd.DataFrame, products_df: pd.DataFrame) -> 
     (product.created_at < order.created_at).
     """
     order_items = []
-    
+
     # Create product lookup for created_at
     product_created_at = products_df.set_index("id")["created_at"].to_dict()
     product_ids = list(product_created_at.keys())
@@ -472,21 +471,21 @@ def generate_order_items(orders_df: pd.DataFrame, products_df: pd.DataFrame) -> 
     for _, order in orders_df.iterrows():
         order_id = order["id"]
         order_created = order["created_at"]
-        
+
         # Filter products that existed before this order was created
         available_products = [
-            pid for pid in product_ids 
+            pid for pid in product_ids
             if product_created_at[pid] < order_created
         ]
-        
+
         # If no products available (shouldn't happen with our data), skip
         if not available_products:
             continue
-        
+
         # Each order has 1-5 items
         num_items = random.randint(1, min(5, len(available_products)))
         selected_products = random.sample(available_products, num_items)
-        
+
         for product_id in selected_products:
             order_items.append({
                 "order_id": order_id,
@@ -497,7 +496,7 @@ def generate_order_items(orders_df: pd.DataFrame, products_df: pd.DataFrame) -> 
     return pd.DataFrame(order_items)
 
 
-def insert_data(conn: connection, table_name: str, df: pd.DataFrame) -> List[int]:
+def insert_data(conn: connection, table_name: str, df: pd.DataFrame) -> list[int]:
     """
     Insert data into table and return list of inserted IDs.
 
@@ -511,7 +510,7 @@ def insert_data(conn: connection, table_name: str, df: pd.DataFrame) -> List[int
     """
     # Replace NaT with None for PostgreSQL compatibility
     df = df.replace({pd.NaT: None})
-    
+
     with conn.cursor() as cur:
         # Prepare column names and placeholders
         columns = df.columns.tolist()
@@ -550,7 +549,7 @@ def print_summary(conn: connection) -> None:
         cur.execute("SELECT MIN(created_at), MAX(created_at) FROM orders")
         min_date, max_date = cur.fetchone()
         print("\n" + "-" * 50)
-        print(f"Orders date range:")
+        print("Orders date range:")
         print(f"  From: {min_date}")
         print(f"  To:   {max_date}")
         print("=" * 50 + "\n")
@@ -558,7 +557,7 @@ def print_summary(conn: connection) -> None:
 
 def main():
     print("\nStarting database seeding process...")
-    
+
     # Seed source database
     print("\nConnecting to postgres-source...")
     conn = get_src_db_connection()
@@ -572,19 +571,19 @@ def main():
         users_df = generate_users(num_users=100)
         user_ids = insert_data(conn, "users", users_df)
         # Add IDs to DataFrame for later use
-        users_df['id'] = user_ids
+        users_df["id"] = user_ids
 
         print("Generating products...")
         products_df = generate_products(num_products=50)
         product_ids = insert_data(conn, "products", products_df)
         # Add IDs to DataFrame for later use
-        products_df['id'] = product_ids
+        products_df["id"] = product_ids
 
         print("Generating orders (spanning 3 months)...")
         orders_df = generate_orders(users_df, num_orders=500)
         order_ids = insert_data(conn, "orders", orders_df)
         # Add IDs to DataFrame for later use
-        orders_df['id'] = order_ids
+        orders_df["id"] = order_ids
 
         print("Generating order items...")
         order_items_df = generate_order_items(orders_df, products_df)
@@ -602,17 +601,17 @@ def main():
     finally:
         conn.close()
         print("Source database connection closed.")
-    
+
     # Setup warehouse database
     print("\nConnecting to postgres-dw (warehouse)...")
     dw_conn = get_dwh_db_connection()
     print("Connected successfully")
-    
+
     try:
         print("\nCreating warehouse tables (staging and raw schemas)...")
         create_warehouse_tables(dw_conn)
         print("\nWarehouse database setup completed successfully!")
-        
+
     except Exception as e:
         print(f"\nError during warehouse setup: {e}")
         dw_conn.rollback()
