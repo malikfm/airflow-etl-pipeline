@@ -55,7 +55,7 @@ shell-dwh:
 
 # Database Seeding
 
-seed-locally:
+seed:
 	@echo "Seeding source database (local)..."
 	@uv run python -m scripts.seed_source_db
 
@@ -110,7 +110,7 @@ check-format:
 
 type-check:
 	@echo "Running type checker..."
-	@uv run ty scripts/
+	@uv run ty check
 
 qa: lint type-check test
 
@@ -128,16 +128,19 @@ airflow-tasks-test:
 # dbt
 
 dbt-debug:
-	@docker-compose exec airflow-webserver bash -c "cd /opt/airflow/dbt_project && dbt debug"
+	@cd /opt/airflow/dbt_project && dbt debug
 
 dbt-deps:
-	@docker-compose exec airflow-webserver bash -c "cd /opt/airflow/dbt_project && dbt deps"
+	@cd /opt/airflow/dbt_project && dbt deps
 
 dbt-run:
-	@docker-compose exec airflow-webserver bash -c "cd /opt/airflow/dbt_project && dbt run"
+	@cd /opt/airflow/dbt_project && dbt run
 
 dbt-test:
-	@docker-compose exec airflow-webserver bash -c "cd /opt/airflow/dbt_project && dbt test"
+	@cd /opt/airflow/dbt_project && dbt test
+
+dbt-build:
+	@cd /opt/airflow/dbt_project && dbt build
 
 dbt-docs:
-	@docker-compose exec airflow-webserver bash -c "cd /opt/airflow/dbt_project && dbt docs generate && dbt docs serve"
+	@cd /opt/airflow/dbt_project && dbt docs generate && dbt docs serve
