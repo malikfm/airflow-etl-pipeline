@@ -128,19 +128,19 @@ airflow-tasks-test:
 # dbt
 
 dbt-debug:
-	@cd /opt/airflow/dbt_project && dbt debug
+	@cd dbt_project && uv run dbt debug
 
 dbt-deps:
-	@cd /opt/airflow/dbt_project && dbt deps
+	@cd dbt_project && uv run dbt deps
 
 dbt-run:
-	@cd /opt/airflow/dbt_project && dbt run
+	@cd dbt_project && uv run dbt run
 
 dbt-test:
-	@cd /opt/airflow/dbt_project && dbt test
+	@cd dbt_project && uv run dbt test
 
 dbt-build:
-	@cd /opt/airflow/dbt_project && dbt build
+	@cd dbt_project && uv run dbt build
 
 dbt-docs:
-	@cd /opt/airflow/dbt_project && dbt docs generate && dbt docs serve
+	@cd dbt_project && uv run dbt docs generate && uv run dbt docs serve
